@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { mockVideos, mockChannels } from "@/lib/mock-data";
-import { formatViews } from "@/lib/utils";
+import { formatViews, cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
