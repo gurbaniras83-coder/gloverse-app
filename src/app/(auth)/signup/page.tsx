@@ -56,18 +56,6 @@ export default function SignupPage() {
   const [isPending, startTransition] = useTransition();
   const [handleStatus, setHandleStatus] = useState<"checking" | "unique" | "taken" | "idle">("idle");
 
-  const form = useForm<z.infer<typeof signupSchema>>({
-    resolver: zodResolver(signupSchema),
-    defaultValues: {
-      handle: "",
-      password: "",
-      confirmPassword: "",
-      fullName: "",
-      bio: "",
-    },
-    mode: "onChange",
-  });
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedCheck = useCallback(
     debounce(async (handle: string) => {
@@ -79,32 +67,25 @@ export default function SignupPage() {
       try {
         const result = await checkHandleUniqueness(handle);
         if (result.error) {
-          // Fail-safe: Handle server/connection errors gracefully
-          setHandleStatus("idle"); // Reset status to allow retries
-          toast({
-            variant: "destructive",
-            title: "Connection Error",
-            description: "Could not verify handle. Please try again.",
-          });
+           console.error("Handle check failed:", result.error);
+           // On any error, we optimistically assume the handle is available to prevent blocking the user.
+           // The final check will happen on the server upon submission.
+           setHandleStatus("unique");
         } else {
-          // Correctly set status based on uniqueness
           setHandleStatus(result.isUnique ? "unique" : "taken");
         }
       } catch (error) {
-        setHandleStatus("idle");
-        toast({
-            variant: "destructive",
-            title: "Error checking handle",
-            description: "Could not verify handle. Please try again.",
-        })
+        console.error("Could not connect to server for handle check:", error);
+        // On connection error, we also optimistically assume the handle is available.
+        setHandleStatus("unique");
       }
     }, 500),
-    [toast]
+    []
   );
 
   const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Immediately convert to lowercase for consistent validation and checking
-    const handle = e.target.value;
+    const handle = e.target.value.toLowerCase();
     form.setValue("handle", handle, { shouldValidate: true });
     debouncedCheck(handle);
   };
