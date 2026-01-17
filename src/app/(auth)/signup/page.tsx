@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useCallback } from "react";
@@ -33,7 +34,6 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { checkHandleUniqueness, registerUser } from "@/lib/actions";
 
-// Simplified single schema to prevent merge errors
 const signupSchema = z.object({
   handle: z.string()
     .min(3, "Handle must be at least 3 characters.")
@@ -55,6 +55,18 @@ export default function SignupPage() {
   const [step, setStep] = useState(1);
   const [isPending, startTransition] = useTransition();
   const [handleStatus, setHandleStatus] = useState<"checking" | "unique" | "taken" | "idle">("idle");
+  
+  const form = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      handle: "",
+      password: "",
+      confirmPassword: "",
+      fullName: "",
+      bio: "",
+    },
+    mode: "onChange",
+  });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedCheck = useCallback(
@@ -66,17 +78,18 @@ export default function SignupPage() {
       setHandleStatus("checking");
       try {
         const result = await checkHandleUniqueness(handle);
+        // The server action now returns a more detailed error object
         if (result.error) {
            console.error("Handle check failed:", result.error);
-           // On any error, we optimistically assume the handle is available to prevent blocking the user.
-           // The final check will happen on the server upon submission.
+           // Optimistically allow user to proceed on server/connection error.
+           // The final check will happen on form submission.
            setHandleStatus("unique");
         } else {
           setHandleStatus(result.isUnique ? "unique" : "taken");
         }
       } catch (error) {
         console.error("Could not connect to server for handle check:", error);
-        // On connection error, we also optimistically assume the handle is available.
+        // On any other failure, also allow user to proceed.
         setHandleStatus("unique");
       }
     }, 500),
@@ -84,7 +97,6 @@ export default function SignupPage() {
   );
 
   const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Immediately convert to lowercase for consistent validation and checking
     const handle = e.target.value.toLowerCase();
     form.setValue("handle", handle, { shouldValidate: true });
     debouncedCheck(handle);
@@ -109,9 +121,9 @@ export default function SignupPage() {
       if (result.success) {
         toast({
           title: "Account Created!",
-          description: "Welcome to Gloverse. Please log in.",
+          description: "Welcome to Gloverse. You are now logged in.",
         });
-        router.push("/login");
+        router.push("/"); // Redirect to home page on success
       } else {
         toast({
           variant: "destructive",
@@ -255,3 +267,4 @@ export default function SignupPage() {
     </div>
   );
 }
+
