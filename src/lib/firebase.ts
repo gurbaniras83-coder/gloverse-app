@@ -1,10 +1,11 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { 
   getAuth, 
   browserLocalPersistence, 
   initializeAuth,
+  type Auth
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -16,14 +17,25 @@ const firebaseConfig = {
   appId: "1:481799251150:web:8f6544715fa77d88749c9f"
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app: FirebaseApp;
+let auth: Auth;
 
-const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence
-});
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Ensure auth is only initialized on the client
+if (typeof window !== 'undefined') {
+  auth = initializeAuth(app, {
+    persistence: browserLocalPersistence
+  });
+} else {
+  auth = getAuth(app);
+}
+
+const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
 
 export { app, auth, db, storage };

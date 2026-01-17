@@ -1,19 +1,32 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
-import { formatDistanceToNow, subDays } from "date-fns";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Video } from "@/lib/types";
 import { formatViews } from "@/lib/utils";
+import React from "react";
 
 type VideoCardProps = {
   video: Video;
 };
 
 export function VideoCard({ video }: VideoCardProps) {
+  const router = useRouter();
   const timeAgo = formatDistanceToNow(video.createdAt, { addSuffix: true });
 
+  const handleCardClick = () => {
+    router.push(`/watch?v=${video.id}`);
+  };
+
+  const handleChannelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/@${video.channel.handle}`);
+  };
+
   return (
-    <Link href={`/watch?v=${video.id}`} className="block w-full">
+    <div onClick={handleCardClick} className="block w-full cursor-pointer">
       <div className="flex flex-col space-y-3">
         <div className="relative aspect-video w-full overflow-hidden rounded-xl">
           <Image
@@ -28,20 +41,20 @@ export function VideoCard({ video }: VideoCardProps) {
           </div>
         </div>
         <div className="flex items-start space-x-3">
-          <Link href={`/@${video.channel.handle}`} className="flex-shrink-0">
+          <div onClick={handleChannelClick} className="flex-shrink-0 cursor-pointer">
             <Avatar>
               <AvatarImage src={video.channel.photoURL} alt={video.channel.handle} />
               <AvatarFallback>
                 {video.channel.handle.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-          </Link>
+          </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-base font-medium leading-tight text-foreground">
               {video.title}
             </h3>
             <div className="mt-1 text-sm text-muted-foreground">
-              <p className="truncate">{video.channel.fullName}</p>
+              <p className="truncate hover:underline" onClick={handleChannelClick}>{video.channel.fullName}</p>
               <p>
                 {formatViews(video.views)} views &middot; {timeAgo}
               </p>
@@ -49,6 +62,6 @@ export function VideoCard({ video }: VideoCardProps) {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

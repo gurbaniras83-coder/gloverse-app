@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { mockVideos, mockChannels } from "@/lib/mock-data";
+import { mockVideos } from "@/lib/mock-data";
 import { formatViews, cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +13,6 @@ import { VideoCard } from "@/components/video-card";
 import { CommentSection } from "@/components/comment-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { useState, useEffect } from "react";
 import type { Video } from "@/lib/types";
 
 function WatchPageContent() {
@@ -24,9 +23,7 @@ function WatchPageContent() {
   const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
-    // In a real app, fetch video data from an API/Firestore
     const foundVideo = mockVideos.find((v) => v.id === videoId);
-    // Setting state in useEffect to avoid hydration mismatch
     if (foundVideo) {
       setVideo(foundVideo);
     }

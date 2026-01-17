@@ -3,42 +3,45 @@
 import { useEffect, useRef, useState } from "react";
 import { Video } from "@/lib/types";
 import { mockShorts } from "@/lib/mock-data";
-import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { Heart, MessageCircle, Send, Plus, Volume2, VolumeX } from "lucide-react";
+import { Heart, MessageCircle, Send, Volume2, VolumeX } from "lucide-react";
 
 interface ShortCardProps {
   short: Video;
   isIntersecting: boolean;
+  isMuted: boolean;
+  toggleMute: (e: React.MouseEvent) => void;
 }
 
-function ShortCard({ short, isIntersecting }: ShortCardProps) {
+function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isMuted, setIsMuted] = useState(true);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     if (isIntersecting) {
-      videoRef.current?.play();
+      videoRef.current?.play().catch(error => console.error("Video play failed:", error));
     } else {
       videoRef.current?.pause();
-      videoRef.current?.currentTime && (videoRef.current.currentTime = 0);
+      if(videoRef.current?.currentTime) {
+        videoRef.current.currentTime = 0;
+      }
     }
   }, [isIntersecting]);
 
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMuted(prev => !prev);
-  }
-
   return (
-    <div className="relative h-full w-full snap-start overflow-hidden">
+    <div className="relative h-full w-full snap-start overflow-hidden bg-black">
       <video
         ref={videoRef}
         src={short.videoUrl}
         loop
-        muted={isMuted}
+        playsInline
         className="h-full w-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
@@ -67,7 +70,7 @@ function ShortCard({ short, isIntersecting }: ShortCardProps) {
           <Send className="h-8 w-8" />
           <span className="text-xs">Share</span>
         </Button>
-        <button onClick={toggleMute} className="mt-2">
+        <button onClick={toggleMute} className="mt-2 text-white">
           {isMuted ? <VolumeX className="h-6 w-6"/> : <Volume2 className="h-6 w-6"/>}
         </button>
       </div>
@@ -79,17 +82,24 @@ export function ShortsPlayer() {
   const shorts = mockShorts;
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleShortId, setVisibleShortId] = useState<string | null>(shorts.length > 0 ? shorts[0].id : null);
+  const [isMuted, setIsMuted] = useState(true);
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(prev => !prev);
+  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        for (const entry of entries) {
           if (entry.isIntersecting) {
             setVisibleShortId(entry.target.getAttribute("data-short-id"));
+            break; 
           }
-        });
+        }
       },
-      { threshold: 0.5 } // 50% of the item must be visible
+      { threshold: 0.7 } // 70% of the item must be visible
     );
 
     const shortsElements = containerRef.current?.querySelectorAll("[data-short-id]");
@@ -107,7 +117,12 @@ export function ShortsPlayer() {
     >
       {shorts.map((short) => (
         <div key={short.id} data-short-id={short.id} className="h-full w-full snap-start">
-            <ShortCard short={short} isIntersecting={visibleShortId === short.id} />
+            <ShortCard 
+              short={short} 
+              isIntersecting={visibleShortId === short.id}
+              isMuted={isMuted}
+              toggleMute={toggleMute}
+            />
         </div>
       ))}
     </div>

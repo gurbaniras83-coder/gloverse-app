@@ -17,6 +17,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/ui/logo";
@@ -56,7 +64,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message || "An unknown error occurred.",
+        description: "The handle or password you entered is incorrect.",
       });
     } finally {
       setIsLoading(false);
@@ -121,11 +129,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-// Dummy components for compilation
-const Card = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
-const CardHeader = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
-const CardFooter = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
-const CardTitle = ({ className, children }: { className?: string, children: React.ReactNode }) => <h2 className={className}>{children}</h2>
-const CardDescription = ({ className, children }: { className?: string, children: React.ReactNode }) => <p className={className}>{p => p}</p>
-const CardContent = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>

@@ -16,6 +16,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +75,7 @@ export default function SignupPage() {
     mode: "onChange",
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedCheck = useCallback(
     debounce(async (handle: string) => {
       if (handle.length < 3) {
@@ -81,12 +90,13 @@ export default function SignupPage() {
   );
 
   const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    form.setValue("handle", e.target.value, { shouldValidate: true });
-    debouncedCheck(e.target.value);
+    const handle = e.target.value;
+    form.setValue("handle", handle, { shouldValidate: true });
+    debouncedCheck(handle);
   };
 
   const nextStep = async () => {
-    let fieldsToValidate: ("handle" | "password" | "confirmPassword")[] = [];
+    let fieldsToValidate: (keyof z.infer<typeof fullSchema>)[] = [];
     if (step === 1) fieldsToValidate = ["handle"];
     if (step === 2) fieldsToValidate = ["password", "confirmPassword"];
 
@@ -243,11 +253,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-// Dummy components for compilation
-const Card = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
-const CardHeader = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
-const CardFooter = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
-const CardTitle = ({ className, children }: { className?: string, children: React.ReactNode }) => <h2 className={className}>{children}</h2>
-const CardDescription = ({ className, children }: { className?: string, children: React.ReactNode }) => <p className={className}>{p => p}</p>
-const CardContent = ({ className, children }: { className?: string, children: React.ReactNode }) => <div className={className}>{children}</div>
