@@ -10,7 +10,9 @@ export type Channel = {
   fullName: string;
   bio: string;
   photoURL: string;
+  bannerUrl?: string;
   subscribers: number;
+  videoCount?: number;
 };
 
 export type Video = {

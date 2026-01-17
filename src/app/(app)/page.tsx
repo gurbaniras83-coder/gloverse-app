@@ -5,7 +5,7 @@ import React from "react";
 
 export default function HomePage() {
   // In a real app, you would fetch this data from your backend
-  const videos = mockVideos;
+  const videos = mockVideos.filter(v => v.type === 'video');
 
   return (
     <div className="flex flex-col">

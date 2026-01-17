@@ -4,9 +4,9 @@ import { PlaceHolderImages } from "./placeholder-images";
 const findImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || "https://picsum.photos/seed/error/640/360";
 
 export const mockChannels: Channel[] = [
-  { id: "user1", handle: "codemaster", fullName: "Alex Doe", bio: "Building the future, one line of code at a time.", photoURL: "https://avatar.vercel.sh/codemaster.png", subscribers: 125000 },
-  { id: "user2", handle: "designgal", fullName: "Brianna Smith", bio: "Pixel perfectionist & UX enthusiast.", photoURL: "https://avatar.vercel.sh/designgal.png", subscribers: 78000 },
-  { id: "user3", handle: "travelvibes", fullName: "Chris Wanderer", bio: "Exploring the world and sharing my journey.", photoURL: "https://avatar.vercel.sh/travelvibes.png", subscribers: 2300 },
+  { id: "user1", handle: "codemaster", fullName: "Alex Doe", bio: "Building the future, one line of code at a time.", photoURL: "https://avatar.vercel.sh/codemaster.png", bannerUrl: "https://picsum.photos/seed/ch1-banner/1200/400", subscribers: 125000, videoCount: 2 },
+  { id: "user2", handle: "designgal", fullName: "Brianna Smith", bio: "Pixel perfectionist & UX enthusiast.", photoURL: "https://avatar.vercel.sh/designgal.png", bannerUrl: "https://picsum.photos/seed/ch2-banner/1200/400", subscribers: 78000, videoCount: 1 },
+  { id: "user3", handle: "travelvibes", fullName: "Chris Wanderer", bio: "Exploring the world and sharing my journey.", photoURL: "https://avatar.vercel.sh/travelvibes.png", bannerUrl: "https://picsum.photos/seed/ch3-banner/1200/400", subscribers: 2300, videoCount: 1 },
 ];
 
 export const mockVideos: Video[] = [
