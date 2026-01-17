@@ -5,22 +5,30 @@ import { doc, setDoc, getDocs, collection, query, where } from "firebase/firesto
 import { auth, db } from "./firebase";
 
 export async function checkHandleUniqueness(handle: string) {
+  // Always check in lowercase for case-insensitivity
+  const lowerCaseHandle = handle.toLowerCase();
   try {
-    const q = query(collection(db, "channels"), where("handle", "==", handle));
+    const q = query(collection(db, "channels"), where("handle", "==", lowerCaseHandle));
     const querySnapshot = await getDocs(q);
     return { isUnique: querySnapshot.empty };
   } catch (error) {
     console.error("Error checking handle uniqueness:", error);
-    return { isUnique: false, error: "Failed to check handle." };
+    // Return an explicit error object for the frontend to handle
+    return { isUnique: false, error: "Failed to check handle. Please try again." };
   }
 }
 
 export async function registerUser({ handle, password, fullName, bio }: { handle: string; password: string; fullName: string; bio: string; }) {
-  const email = `${handle}@gloverse.com`;
+  // Always work with lowercase handles for consistency
+  const lowerCaseHandle = handle.toLowerCase();
+  const email = `${lowerCaseHandle}@gloverse.com`;
 
   try {
     // Step 1: Check handle uniqueness again on the server
-    const uniquenessCheck = await checkHandleUniqueness(handle);
+    const uniquenessCheck = await checkHandleUniqueness(lowerCaseHandle);
+    if (uniquenessCheck.error) {
+        throw new Error(uniquenessCheck.error);
+    }
     if (!uniquenessCheck.isUnique) {
       throw new Error("Handle is already taken.");
     }
@@ -33,12 +41,12 @@ export async function registerUser({ handle, password, fullName, bio }: { handle
     );
     const user = userCredential.user;
 
-    // Step 3: Create channel document in Firestore
+    // Step 3: Create channel document in Firestore with lowercase handle
     await setDoc(doc(db, "channels", user.uid), {
-      handle: handle,
+      handle: lowerCaseHandle,
       fullName: fullName,
       bio: bio,
-      photoURL: `https://avatar.vercel.sh/${handle}.png`, // Default avatar
+      photoURL: `https://avatar.vercel.sh/${lowerCaseHandle}.png`, // Default avatar
       subscribers: 0,
       user_id: user.uid,
       createdAt: new Date().toISOString(),

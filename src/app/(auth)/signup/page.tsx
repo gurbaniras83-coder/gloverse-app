@@ -77,8 +77,19 @@ export default function SignupPage() {
       }
       setHandleStatus("checking");
       try {
-        const { isUnique } = await checkHandleUniqueness(handle);
-        setHandleStatus(isUnique ? "unique" : "taken");
+        const result = await checkHandleUniqueness(handle);
+        if (result.error) {
+          // Fail-safe: Handle server/connection errors gracefully
+          setHandleStatus("idle"); // Reset status to allow retries
+          toast({
+            variant: "destructive",
+            title: "Connection Error",
+            description: "Could not verify handle. Please try again.",
+          });
+        } else {
+          // Correctly set status based on uniqueness
+          setHandleStatus(result.isUnique ? "unique" : "taken");
+        }
       } catch (error) {
         setHandleStatus("idle");
         toast({
@@ -92,6 +103,7 @@ export default function SignupPage() {
   );
 
   const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Immediately convert to lowercase for consistent validation and checking
     const handle = e.target.value;
     form.setValue("handle", handle, { shouldValidate: true });
     debouncedCheck(handle);
@@ -156,7 +168,14 @@ export default function SignupPage() {
                       <FormLabel>Handle</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input placeholder="your_handle" {...field} onChange={handleHandleChange} />
+                          <Input 
+                            placeholder="your_handle" 
+                            {...field} 
+                            onChange={handleHandleChange}
+                            autoCapitalize="none"
+                            autoComplete="off"
+                            autoCorrect="off"
+                          />
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                             {handleStatus === 'checking' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                             {handleStatus === 'unique' && <CheckCircle className="h-4 w-4 text-green-500" />}
