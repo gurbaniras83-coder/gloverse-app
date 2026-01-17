@@ -23,7 +23,8 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const profileHref = user?.channel ? `/@${user.channel.handle}` : "/you";
+  // The 'You' tab should always link to /you page per user request to fix 404.
+  const profileHref = "/you";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm">
@@ -55,7 +56,8 @@ export function BottomNav() {
           href={profileHref}
           className={cn(
             "flex flex-col items-center justify-center gap-1 p-2 text-muted-foreground transition-colors hover:text-primary",
-            { "text-primary": pathname.startsWith("/@") || pathname === '/you' }
+            // The 'You' page includes the profile view, studio, and settings, so highlight for /you or /studio.
+            { "text-primary": pathname.startsWith("/you") || pathname.startsWith("/studio") }
           )}
         >
           {user?.channel ? (
