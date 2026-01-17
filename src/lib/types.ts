@@ -13,19 +13,23 @@ export type Channel = {
   bannerUrl?: string;
   subscribers: number;
   videoCount?: number;
+  createdAt?: string; // ISO String
 };
 
 export type Video = {
   id: string;
   title: string;
   thumbnailUrl: string;
-  channel: Channel;
+  channelId: string;
+  channel?: Channel; // populated client-side
   views: number;
   createdAt: Date;
   duration: number; // in seconds
   videoUrl: string;
   description: string;
   type: 'long' | 'short';
+  visibility: 'public' | 'private';
+  likes?: number;
 };
 
 export type Comment = {

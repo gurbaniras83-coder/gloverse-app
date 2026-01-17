@@ -6,37 +6,55 @@ import { mockShorts } from "@/lib/mock-data";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { Heart, MessageCircle, Send, Volume2, VolumeX } from "lucide-react";
+import { Heart, MessageCircle, Send, Play, Pause, Volume2, VolumeX } from "lucide-react";
 
 interface ShortCardProps {
   short: Video;
   isIntersecting: boolean;
-  isMuted: boolean;
-  toggleMute: (e: React.MouseEvent) => void;
 }
 
-function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProps) {
+function ShortCard({ short, isIntersecting }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
+  useEffect(() => {
+    if (isIntersecting) {
+      // Auto-play when it comes into view
+      videoRef.current?.play().then(() => setIsPlaying(true)).catch(error => console.error("Video play failed:", error));
+    } else {
+      // Pause and reset when it goes out of view
+      videoRef.current?.pause();
+      setIsPlaying(false);
+      if(videoRef.current?.currentTime) {
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [isIntersecting]);
+  
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.muted = isMuted;
     }
   }, [isMuted]);
 
-  useEffect(() => {
-    if (isIntersecting) {
-      videoRef.current?.play().catch(error => console.error("Video play failed:", error));
+  const togglePlay = () => {
+    if (videoRef.current?.paused) {
+      videoRef.current?.play();
+      setIsPlaying(true);
     } else {
       videoRef.current?.pause();
-      if(videoRef.current?.currentTime) {
-        videoRef.current.currentTime = 0;
-      }
+      setIsPlaying(false);
     }
-  }, [isIntersecting]);
+  };
+  
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent toggling play/pause
+    setIsMuted(prev => !prev);
+  }
 
   return (
-    <div className="relative h-full w-full snap-start overflow-hidden bg-black">
+    <div className="relative h-full w-full snap-start overflow-hidden bg-black" onClick={togglePlay}>
       <video
         ref={videoRef}
         src={short.videoUrl}
@@ -44,10 +62,17 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProp
         playsInline
         className="h-full w-full object-cover"
       />
+      
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <Play className="h-16 w-16 text-white/70" />
+        </div>
+      )}
+
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
 
       <div className="absolute bottom-4 left-4 text-white">
-        <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2">
+        <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
           <Avatar className="h-10 w-10 border-2 border-white">
             <AvatarImage src={short.channel.photoURL} />
             <AvatarFallback>{short.channel.handle[0]}</AvatarFallback>
@@ -58,15 +83,15 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProp
       </div>
       
       <div className="absolute bottom-4 right-2 flex flex-col items-center gap-4 text-white">
-        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white">
+        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
           <Heart className="h-8 w-8" />
           <span className="text-xs">1.2M</span>
         </Button>
-        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white">
+        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
           <MessageCircle className="h-8 w-8" />
           <span className="text-xs">5,123</span>
         </Button>
-        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white">
+        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
           <Send className="h-8 w-8" />
           <span className="text-xs">Share</span>
         </Button>
@@ -82,12 +107,6 @@ export function ShortsPlayer() {
   const shorts = mockShorts;
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleShortId, setVisibleShortId] = useState<string | null>(shorts.length > 0 ? shorts[0].id : null);
-  const [isMuted, setIsMuted] = useState(true);
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMuted(prev => !prev);
-  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -109,6 +128,10 @@ export function ShortsPlayer() {
       shortsElements?.forEach((el) => observer.unobserve(el));
     };
   }, [shorts]);
+  
+    if(shorts.length === 0) {
+        return <div className="h-full w-full flex items-center justify-center text-white">No shorts available.</div>
+    }
 
   return (
     <div
@@ -120,8 +143,6 @@ export function ShortsPlayer() {
             <ShortCard 
               short={short} 
               isIntersecting={visibleShortId === short.id}
-              isMuted={isMuted}
-              toggleMute={toggleMute}
             />
         </div>
       ))}

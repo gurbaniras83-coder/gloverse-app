@@ -55,14 +55,12 @@ export default function YouPage() {
     );
   }
 
-  // Use a slice of mock videos for history
   const historyVideos = mockVideos.slice(0, 4);
   const likedVideos = mockVideos.slice(2, 5);
 
 
   return (
     <div className="p-4 space-y-8">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Avatar className="h-20 w-20">
           <AvatarImage src={user.channel.photoURL} alt={user.channel.handle} />
@@ -79,7 +77,6 @@ export default function YouPage() {
         </div>
       </div>
 
-      {/* Action Buttons */}
        <div className="overflow-x-auto no-scrollbar">
         <div className="flex gap-2">
             <Button variant="secondary" className="rounded-full flex-shrink-0"><Users className="mr-2"/>Switch account</Button>
@@ -90,7 +87,6 @@ export default function YouPage() {
 
       <Separator />
 
-      {/* History */}
       <div>
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2"><History /> History</h2>
@@ -110,7 +106,6 @@ export default function YouPage() {
 
       <Separator />
 
-      {/* Playlists */}
       <div>
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-xl font-bold flex items-center gap-2"><FolderClock /> Playlists</h2>
