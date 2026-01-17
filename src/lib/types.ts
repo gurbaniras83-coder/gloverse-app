@@ -25,7 +25,7 @@ export type Video = {
   duration: number; // in seconds
   videoUrl: string;
   description: string;
-  type: 'video' | 'short';
+  type: 'long' | 'short';
 };
 
 export type Comment = {

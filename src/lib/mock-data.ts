@@ -20,7 +20,7 @@ export const mockVideos: Video[] = [
     duration: 620,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
     description: "A deep dive into server components and a full tutorial on building a modern web app with Next.js.",
-    type: 'video'
+    type: 'long'
   },
   {
     id: "vid2",
@@ -32,7 +32,7 @@ export const mockVideos: Video[] = [
     duration: 1230,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
     description: "Learn the fundamentals of UI/UX design to make your applications not only functional but also beautiful and intuitive.",
-    type: 'video'
+    type: 'long'
   },
   {
     id: "vid3",
@@ -44,7 +44,7 @@ export const mockVideos: Video[] = [
     duration: 945,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
     description: "A breathtaking journey through the mountains of Switzerland. Drone shots, hiking trails, and more!",
-    type: 'video'
+    type: 'long'
   },
   {
     id: "vid4",
@@ -56,12 +56,9 @@ export const mockVideos: Video[] = [
     duration: 480,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
     description: "Master the art of cooking the perfect steak every single time. We cover everything from cut selection to searing.",
-    type: 'video'
+    type: 'long'
   },
-];
-
-export const mockShorts: Video[] = [
-    {
+   {
     id: "short1",
     title: "Funny Cat Moments",
     thumbnailUrl: findImage("short1"),
@@ -86,6 +83,8 @@ export const mockShorts: Video[] = [
     type: 'short',
   },
 ];
+
+export const mockShorts: Video[] = mockVideos.filter(v => v.type === 'short');
 
 export const mockComments: Comment[] = [
     { id: "c1", user: { name: "David", avatar: "https://avatar.vercel.sh/david.png" }, text: "This was so helpful! Thank you!", timestamp: new Date(Date.now() - 5 * 60 * 1000) },

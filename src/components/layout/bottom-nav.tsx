@@ -58,10 +58,11 @@ export function BottomNav() {
                   <SheetHeader className="text-left mb-4">
                     <SheetTitle className="text-xl font-bold">Create</SheetTitle>
                   </SheetHeader>
-                  <div className="grid gap-6" onClick={() => setCreateSheetOpen(false)}>
+                  <div className="grid gap-6">
                     <Link
                       href="/upload?type=short"
                       className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted"
+                      onClick={() => setCreateSheetOpen(false)}
                     >
                       <Flame className="w-7 h-7 text-primary" />
                       <span className="font-semibold text-lg">
@@ -71,6 +72,7 @@ export function BottomNav() {
                     <Link
                       href="/upload"
                       className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted"
+                       onClick={() => setCreateSheetOpen(false)}
                     >
                       <Video className="w-7 h-7 text-primary" />
                       <span className="font-semibold text-lg">
@@ -107,7 +109,7 @@ export function BottomNav() {
             "flex flex-col items-center justify-center gap-1 p-2 text-muted-foreground transition-colors hover:text-primary",
             {
               "text-primary":
-                pathname.startsWith("/you") || pathname.startsWith("/studio"),
+                pathname.startsWith(profileHref) || pathname.startsWith("/studio"),
             }
           )}
         >

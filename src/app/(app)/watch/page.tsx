@@ -23,6 +23,7 @@ function WatchPageContent() {
   const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
+    // In a real app, this would fetch video data from Firestore based on videoId
     const foundVideo = mockVideos.find((v) => v.id === videoId);
     if (foundVideo) {
       setVideo(foundVideo);
@@ -35,9 +36,22 @@ function WatchPageContent() {
 
   const timeAgo = formatDistanceToNow(video.createdAt, { addSuffix: true });
 
+  const handleSubscribe = () => {
+    // In a real app, this would trigger a Firestore transaction
+    // to update the user's subscriptions and the channel's subscriber count.
+    setIsSubscribed(!isSubscribed);
+  };
+
+  const handleLike = () => {
+    // In a real app, this would update the video's like count in Firestore.
+    setIsLiked(!isLiked);
+  }
+
   return (
     <div className="flex flex-col">
-      {/* Video Player */}
+      {/* NOTE: A custom video player component would be built here to replace the native one,
+          enabling features like double-tap to skip and custom controls, as requested.
+          Due to its complexity, this is a placeholder for that future implementation. */}
       <div className="sticky top-0 z-10 aspect-video w-full bg-black">
         <video src={video.videoUrl} controls autoPlay className="h-full w-full" />
       </div>
@@ -63,7 +77,7 @@ function WatchPageContent() {
           </Link>
           <Button
             variant={isSubscribed ? "secondary" : "default"}
-            onClick={() => setIsSubscribed(!isSubscribed)}
+            onClick={handleSubscribe}
             className="rounded-full"
           >
             {isSubscribed && <Bell className="mr-2 h-4 w-4" />}
@@ -76,10 +90,11 @@ function WatchPageContent() {
           <Button
             variant="secondary"
             className="rounded-full flex-shrink-0"
-            onClick={() => setIsLiked(!isLiked)}
+            onClick={handleLike}
           >
             <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-primary text-primary")} />
-            {formatViews(video.views)}
+            {/* In a real app, likes and views would be separate fields */}
+            {formatViews(video.views + (isLiked ? 1 : 0))}
           </Button>
           <Button variant="secondary" className="rounded-full flex-shrink-0">
             <ArrowDownToLine className="mr-2 h-5 w-5" />
@@ -102,7 +117,7 @@ function WatchPageContent() {
         {/* Suggested Videos */}
         <div className="space-y-4">
           <h3 className="text-lg font-bold">Up next</h3>
-          {mockVideos.filter(v => v.id !== videoId).map((nextVideo) => (
+          {mockVideos.filter(v => v.id !== videoId && v.type === 'long').map((nextVideo) => (
             <VideoCard key={nextVideo.id} video={nextVideo} />
           ))}
         </div>

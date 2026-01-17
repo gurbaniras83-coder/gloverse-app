@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Video, Image as ImageIcon, UploadCloud, ChevronLeft, Globe, Lock } from "lucide-react";
+import { Loader2, Video, Image as ImageIcon, UploadCloud, ChevronLeft, Globe, Lock, Users, ShieldAlert } from "lucide-react";
 import {
   ref,
   uploadBytesResumable,
@@ -37,6 +37,7 @@ const uploadSchema = z.object({
   videoFile: z.instanceof(File).refine(file => file.size > 0, 'Video file is required.'),
   thumbnailFile: z.instanceof(File).optional(),
   visibility: z.enum(["public", "private"]).default("public"),
+  audience: z.enum(["kids", "none"]).default("none"),
 });
 
 type UploadFormValues = z.infer<typeof uploadSchema>;
@@ -63,15 +64,16 @@ export default function UploadPage() {
       title: "",
       description: "",
       visibility: "public",
+      audience: "none",
     },
   });
 
   useEffect(() => {
     // Trigger file input if no video is selected
-    if (!videoPreview) {
+    if (!form.getValues("videoFile")) {
       videoInputRef.current?.click();
     }
-  }, [videoPreview]);
+  }, [form]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'video' | 'thumbnail') => {
     const file = e.target.files?.[0];
@@ -159,7 +161,7 @@ export default function UploadPage() {
         thumbnailURL = await uploadFile(thumbFile, `thumbnails/${thumbnailFileName}`);
       }
       
-      const videoType = isShort ? 'short' : (videoDuration <= 60 ? 'short' : 'video');
+      const videoType = videoDuration < 60 ? 'short' : 'long';
 
       await addDoc(collection(db, "videos"), {
         uid: user.uid,
@@ -170,6 +172,7 @@ export default function UploadPage() {
         thumbnailUrl: thumbnailURL,
         type: videoType,
         visibility: data.visibility,
+        audience: data.audience,
         views: 0,
         likes: [],
         createdAt: serverTimestamp(),
@@ -212,10 +215,18 @@ export default function UploadPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="space-y-4">
-                {videoPreview && (
+                {videoPreview ? (
                     <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
                         <video src={videoPreview} className="max-h-full" controls />
                     </div>
+                ) : (
+                  <div 
+                    className="relative aspect-video w-full rounded-xl overflow-hidden bg-secondary flex flex-col items-center justify-center cursor-pointer hover:bg-muted"
+                    onClick={() => videoInputRef.current?.click()}
+                  >
+                    <UploadCloud className="w-16 h-16 text-muted-foreground"/>
+                    <p className="text-muted-foreground mt-2">Tap to select a video file</p>
+                  </div>
                 )}
                  <div className="flex gap-4">
                     <div
@@ -276,12 +287,40 @@ export default function UploadPage() {
                 </FormItem>
             )}/>
             
+            <FormField control={form.control} name="audience" render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-lg font-semibold">Audience</FormLabel>
+                   <FormDescription>Is this video made for kids?</FormDescription>
+                  <FormControl>
+                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
+                         <Users className="w-6 h-6 text-muted-foreground"/>
+                         <div className="flex-1">
+                            <FormControl><RadioGroupItem value="none" className="sr-only"/></FormControl>
+                            <FormLabel className="font-normal text-base">No, it's not made for kids</FormLabel>
+                            <FormDescription>Your content will be available to a general audience.</FormDescription>
+                         </div>
+                      </FormItem>
+                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
+                        <ShieldAlert className="w-6 h-6 text-muted-foreground"/>
+                        <div className="flex-1">
+                            <FormControl><RadioGroupItem value="kids" className="sr-only"/></FormControl>
+                            <FormLabel className="font-normal text-base">Yes, it's made for kids</FormLabel>
+                            <FormDescription>Features like comments will be restricted.</FormDescription>
+                        </div>
+                      </FormItem>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+            )}/>
+
             {/* Hidden file inputs */}
             <Input type="file" accept="video/*" ref={videoInputRef} className="hidden" onChange={(e) => handleFileChange(e, 'video')} />
             <Input type="file" accept="image/*" ref={thumbnailInputRef} className="hidden" onChange={(e) => handleFileChange(e, 'thumbnail')} />
 
-            <Button type="submit" size="lg" className="w-full" disabled={!videoPreview}>
-              Publish
+            <Button type="submit" size="lg" className="w-full" disabled={!videoPreview || isUploading}>
+              {isUploading ? <Loader2 className="animate-spin" /> : 'Publish'}
             </Button>
           </form>
         </Form>
