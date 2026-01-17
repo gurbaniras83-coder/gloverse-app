@@ -7,7 +7,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, LogOut, Settings, BarChart2, ChevronRight, History, FolderClock, ThumbsUp, UserSwitch, School, Shield } from "lucide-react";
+import { Loader2, LogOut, Settings, BarChart2, ChevronRight, History, FolderClock, ThumbsUp, Users, School, Shield } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { mockVideos } from "@/lib/mock-data";
@@ -82,7 +82,7 @@ export default function YouPage() {
       {/* Action Buttons */}
        <div className="overflow-x-auto no-scrollbar">
         <div className="flex gap-2">
-            <Button variant="secondary" className="rounded-full flex-shrink-0"><UserSwitch className="mr-2"/>Switch account</Button>
+            <Button variant="secondary" className="rounded-full flex-shrink-0"><Users className="mr-2"/>Switch account</Button>
             <Button variant="secondary" className="rounded-full flex-shrink-0"><School className="mr-2"/>Google Account</Button>
             <Button variant="secondary" className="rounded-full flex-shrink-0"><Shield className="mr-2"/>Turn on Incognito</Button>
         </div>
