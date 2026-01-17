@@ -7,6 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { Heart, MessageCircle, Send, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
+import type { Channel } from "@/lib/types";
 
 interface ShortCardProps {
   short: Video;
@@ -16,7 +19,7 @@ interface ShortCardProps {
 function ShortCard({ short, isIntersecting }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     if (isIntersecting) {
@@ -52,6 +55,8 @@ function ShortCard({ short, isIntersecting }: ShortCardProps) {
     e.stopPropagation(); // Prevent toggling play/pause
     setIsMuted(prev => !prev);
   }
+
+  if (!short.channel) return null;
 
   return (
     <div className="relative h-full w-full snap-start overflow-hidden bg-black" onClick={togglePlay}>
@@ -104,11 +109,57 @@ function ShortCard({ short, isIntersecting }: ShortCardProps) {
 }
 
 export function ShortsPlayer() {
-  const shorts = mockShorts;
+  const [shorts, setShorts] = useState<Video[]>(mockShorts);
+  const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [visibleShortId, setVisibleShortId] = useState<string | null>(shorts.length > 0 ? shorts[0].id : null);
+  const [visibleShortId, setVisibleShortId] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchShorts = async () => {
+      setLoading(true);
+      try {
+        const shortsQuery = query(
+          collection(db, "videos"), 
+          where("type", "==", "short"), 
+          where("visibility", "==", "public"),
+          orderBy("createdAt", "desc")
+        );
+        const shortsSnapshot = await getDocs(shortsQuery);
+
+        let fetchedShorts: Video[] = [];
+        if (!shortsSnapshot.empty) {
+            fetchedShorts = await Promise.all(shortsSnapshot.docs.map(async (videoDoc) => {
+                const videoData = videoDoc.data();
+                const channelRef = doc(db, "channels", videoData.channelId);
+                const channelSnap = await getDoc(channelRef);
+                const channelData = channelSnap.exists() ? { ...channelSnap.data(), id: channelSnap.id } as Channel : null;
+                return {
+                    id: videoDoc.id,
+                    ...videoData,
+                    createdAt: videoData.createdAt.toDate(),
+                    channel: channelData,
+                } as Video;
+            }));
+            fetchedShorts = fetchedShorts.filter(v => v.channel);
+        }
+        
+        setShorts(fetchedShorts.length > 0 ? fetchedShorts : mockShorts);
+
+      } catch (error) {
+        console.error("Error fetching shorts, falling back to mocks:", error);
+        setShorts(mockShorts);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchShorts();
+  }, []);
+
+  useEffect(() => {
+    if (loading || shorts.length === 0) return;
+    
+    setVisibleShortId(shorts[0].id);
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -127,8 +178,12 @@ export function ShortsPlayer() {
     return () => {
       shortsElements?.forEach((el) => observer.unobserve(el));
     };
-  }, [shorts]);
+  }, [shorts, loading]);
   
+    if(loading) {
+        return <div className="h-full w-full flex items-center justify-center text-white">Loading shorts...</div>
+    }
+
     if(shorts.length === 0) {
         return <div className="h-full w-full flex items-center justify-center text-white">No shorts available.</div>
     }

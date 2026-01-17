@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import type { Video, Channel } from "@/lib/types";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, increment, writeBatch, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, increment, writeBatch, setDoc, deleteDoc, limit } from "firebase/firestore";
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 
@@ -153,11 +153,11 @@ function WatchPageContent() {
         if (isSubscribed) {
             batch.delete(subRef);
             batch.update(channelRef, { subscribers: increment(-1) });
-            video.channel.subscribers--;
+            if (video.channel) video.channel.subscribers--;
         } else {
             batch.set(subRef, { subscribedAt: new Date() });
             batch.update(channelRef, { subscribers: increment(1) });
-            video.channel.subscribers++;
+            if (video.channel) video.channel.subscribers++;
         }
         await batch.commit();
         setIsSubscribed(!isSubscribed);

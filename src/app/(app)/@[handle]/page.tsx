@@ -10,7 +10,7 @@ import { formatViews } from '@/lib/utils';
 import { VideoCard } from '@/components/video-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from 'next/image';
-import { db } from '@/lib/firebase';
+import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, writeBatch, increment } from 'firebase/firestore';
 import { useAuth } from '@/context/auth-provider';
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,7 @@ function ChannelPageContent() {
     const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const handleParam = params.handle as string;
-    const handle = handleParam.startsWith('@') ? handleParam.substring(1) : handleParam;
+    const handle = handleParam ? (handleParam.startsWith('@') ? handleParam.substring(1) : handleParam) : "";
 
     const [channel, setChannel] = useState<Channel | null | undefined>(undefined);
     const [videos, setVideos] = useState<Video[]>([]);
@@ -47,7 +47,12 @@ function ChannelPageContent() {
                 const channelData = { id: channelDoc.id, ...channelDoc.data() } as Channel;
                 
                 if (channelData.createdAt) {
-                    setJoinedDate(new Date(channelData.createdAt).toLocaleDateString());
+                    // Check if createdAt is a Firestore Timestamp
+                    if (typeof (channelData.createdAt as any).toDate === 'function') {
+                      setJoinedDate((channelData.createdAt as any).toDate().toLocaleDateString());
+                    } else if (typeof channelData.createdAt === 'string') {
+                      setJoinedDate(new Date(channelData.createdAt).toLocaleDateString());
+                    }
                 }
 
                 if (user?.uid === channelData.id) {
@@ -79,7 +84,7 @@ function ChannelPageContent() {
             }
         };
 
-        if (!authLoading) {
+        if (!authLoading && handle) {
             fetchChannelData();
         }
     }, [handle, user, authLoading]);
@@ -136,7 +141,7 @@ function ChannelPageContent() {
     return (
         <div className="flex flex-col">
             <div className="relative w-full aspect-[3/1] bg-secondary">
-                {channel.bannerUrl && ( <Image src={channel.bannerUrl} alt={`${channel.fullName} banner`} fill objectFit="cover" /> )}
+                {channel.bannerUrl && ( <Image src={channel.bannerUrl} alt={`${channel.fullName} banner`} fill style={{objectFit:"cover"}} /> )}
             </div>
 
             <div className="p-4 flex flex-col items-center text-center -mt-12 space-y-2">
@@ -173,7 +178,7 @@ function ChannelPageContent() {
             </div>
 
             <Tabs defaultValue="home" className="w-full mt-4">
-                <TabsList className="w-full overflow-x-auto no-scrollbar justify-start">
+                <TabsList className="w-full overflow-x-auto no-scrollbar justify-start px-4">
                     <TabsTrigger value="home">Home</TabsTrigger>
                     <TabsTrigger value="videos">Videos</TabsTrigger>
                     <TabsTrigger value="shorts">Shorts</TabsTrigger>
@@ -192,7 +197,7 @@ function ChannelPageContent() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {shorts.map(short => (
                                  <div key={short.id} className="relative aspect-[9/16] rounded-lg overflow-hidden">
-                                     <Image src={short.thumbnailUrl} alt={short.title} fill objectFit="cover" />
+                                     <Image src={short.thumbnailUrl} alt={short.title} fill style={{objectFit:"cover"}} />
                                  </div>
                             ))}
                         </div>

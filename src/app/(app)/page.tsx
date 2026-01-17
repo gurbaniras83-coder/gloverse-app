@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 import { ShortsShelf } from "@/components/shorts-shelf";
 import { Logo } from "@/components/ui/logo";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, orderBy, getDoc, doc } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, getDoc, doc, limit } from "firebase/firestore";
 import { Video, Channel } from "@/lib/types";
 import { mockVideos } from "@/lib/mock-data";
 import { Skeleton } from "@/components/ui/skeleton";
