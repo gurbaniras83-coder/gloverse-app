@@ -1,0 +1,21 @@
+{
+  "name": "Gloverse",
+  "short_name": "Gloverse",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F0F0F",
+  "theme_color": "#0F0F0F",
+  "description": "A professional YouTube mobile clone.",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

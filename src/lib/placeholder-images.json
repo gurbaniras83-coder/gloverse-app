@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "vid1",
+      "description": "A developer coding on a laptop in a dark room.",
+      "imageUrl": "https://images.unsplash.com/photo-1698919585693-191c51b66cde?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjb2RlJTIwZGV2ZWxvcGVyfGVufDB8fHx8MTc2ODU4MDE1NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "code developer"
+    },
+    {
+      "id": "vid2",
+      "description": "A futuristic cityscape at night with flying vehicles.",
+      "imageUrl": "https://images.unsplash.com/photo-1519608487953-e999c86e7455?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxmdXR1cmlzdGljJTIwY2l0eXxlbnwwfHx8fDE3Njg2NDc2MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "futuristic city"
+    },
+    {
+      "id": "vid3",
+      "description": "A person hiking on a mountain trail with a beautiful view.",
+      "imageUrl": "https://images.unsplash.com/photo-1700507987180-b7a9610f508f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtb3VudGFpbiUyMGhpa2V8ZW58MHx8fHwxNzY4NjQ3NjkzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mountain hike"
+    },
+    {
+      "id": "vid4",
+      "description": "A close-up of a delicious-looking meal being prepared.",
+      "imageUrl": "https://images.unsplash.com/photo-1636647511729-6703539ba71f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxmb29kJTIwY29va2luZ3xlbnwwfHx8fDE3Njg1NzU2Mzl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "food cooking"
+    },
+    {
+      "id": "vid5",
+      "description": "An artist painting on a canvas in a bright studio.",
+      "imageUrl": "https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YXJ0aXN0JTIwcGFpbnRpbmd8ZW58MHx8fHwxNzY4NTQ2ODA4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "artist painting"
+    },
+    {
+      "id": "short1",
+      "description": "Vertical short video of a cat playing.",
+      "imageUrl": "https://images.unsplash.com/photo-1516750105099-4b8a83e217ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjYXQlMjBwbGF5aW5nfGVufDB8fHx8MTc2ODY1MTQzMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cat playing"
+    },
+    {
+      "id": "short2",
+      "description": "Vertical short video of a city street time-lapse.",
+      "imageUrl": "https://images.unsplash.com/photo-1558383745-6274e5c505c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjaXR5JTIwdGltZWxhcHNlfGVufDB8fHx8MTc2ODY1MTQzMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city timelapse"
+    },
+    {
+      "id": "short3",
+      "description": "Vertical short video of a person dancing.",
+      "imageUrl": "https://images.unsplash.com/photo-1533147670608-2a2f9775d3a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwZXJzb24lMjBkYW5jaW5nfGVufDB8fHx8MTc2ODYwODM3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person dancing"
+    }
+  ]
 }
