@@ -1,6 +1,7 @@
 import { VideoCard } from "@/components/video-card";
 import { mockVideos } from "@/lib/mock-data";
 import { Separator } from "@/components/ui/separator";
+import React from "react";
 
 export default function HomePage() {
   // In a real app, you would fetch this data from your backend
@@ -13,10 +14,10 @@ export default function HomePage() {
       </header>
       <div className="flex flex-col space-y-6 p-4 pt-0">
         {videos.map((video, index) => (
-          <>
-            <VideoCard key={video.id} video={video} />
+          <React.Fragment key={video.id}>
+            <VideoCard video={video} />
             {index < videos.length - 1 && <Separator className="my-2" />}
-          </>
+          </React.Fragment>
         ))}
       </div>
     </div>
