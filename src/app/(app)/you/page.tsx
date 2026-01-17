@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useAuth } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -15,6 +16,13 @@ export default function YouPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
+
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -25,17 +33,12 @@ export default function YouPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
-  }
-
-  if (!user) {
-    router.replace("/login");
-    return null;
   }
   
   if (!user.channel) {

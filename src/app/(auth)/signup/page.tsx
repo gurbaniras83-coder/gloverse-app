@@ -33,28 +33,21 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { checkHandleUniqueness, registerUser } from "@/lib/actions";
 
-// Schemas for each step
-const stepOneSchema = z.object({
+// Simplified single schema to prevent merge errors
+const signupSchema = z.object({
   handle: z.string()
     .min(3, "Handle must be at least 3 characters.")
     .max(20, "Handle must be less than 20 characters.")
     .regex(/^[a-zA-Z0-9_.]+$/, "Handle can only contain letters, numbers, underscores, and periods."),
-});
-
-const stepTwoSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters."),
   confirmPassword: z.string(),
+  fullName: z.string().min(2, "Full name is required.").max(50),
+  bio: z.string().max(160, "Bio must be less than 160 characters.").optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-const stepThreeSchema = z.object({
-  fullName: z.string().min(2, "Full name is required.").max(50),
-  bio: z.string().max(160, "Bio must be less than 160 characters.").optional(),
-});
-
-const fullSchema = stepOneSchema.merge(stepTwoSchema).merge(stepThreeSchema);
 
 export default function SignupPage() {
   const router = useRouter();
@@ -63,8 +56,8 @@ export default function SignupPage() {
   const [isPending, startTransition] = useTransition();
   const [handleStatus, setHandleStatus] = useState<"checking" | "unique" | "taken" | "idle">("idle");
 
-  const form = useForm<z.infer<typeof fullSchema>>({
-    resolver: zodResolver(fullSchema),
+  const form = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
       handle: "",
       password: "",
@@ -83,10 +76,19 @@ export default function SignupPage() {
         return;
       }
       setHandleStatus("checking");
-      const { isUnique } = await checkHandleUniqueness(handle);
-      setHandleStatus(isUnique ? "unique" : "taken");
+      try {
+        const { isUnique } = await checkHandleUniqueness(handle);
+        setHandleStatus(isUnique ? "unique" : "taken");
+      } catch (error) {
+        setHandleStatus("idle");
+        toast({
+            variant: "destructive",
+            title: "Error checking handle",
+            description: "Could not verify handle. Please try again.",
+        })
+      }
     }, 500),
-    []
+    [toast]
   );
 
   const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,7 +98,7 @@ export default function SignupPage() {
   };
 
   const nextStep = async () => {
-    let fieldsToValidate: (keyof z.infer<typeof fullSchema>)[] = [];
+    let fieldsToValidate: (keyof z.infer<typeof signupSchema>)[] = [];
     if (step === 1) fieldsToValidate = ["handle"];
     if (step === 2) fieldsToValidate = ["password", "confirmPassword"];
 
@@ -108,7 +110,7 @@ export default function SignupPage() {
 
   const prevStep = () => setStep(s => s - 1);
 
-  async function onSubmit(values: z.infer<typeof fullSchema>) {
+  async function onSubmit(values: z.infer<typeof signupSchema>) {
     startTransition(async () => {
       const result = await registerUser(values);
       if (result.success) {
