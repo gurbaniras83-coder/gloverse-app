@@ -39,7 +39,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <title>Gloverse</title>
         <meta name="description" content="A professional YouTube mobile clone." />

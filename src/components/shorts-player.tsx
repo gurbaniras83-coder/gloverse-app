@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -8,8 +7,12 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { Heart, MessageCircle, Send, Play, Pause, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, orderBy, getDocs, doc, getDoc, onSnapshot, setDoc, deleteDoc, updateDoc, increment } from "firebase/firestore";
 import type { Channel } from "@/lib/types";
+import { useAuth } from "@/context/auth-provider";
+import { useToast } from "@/hooks/use-toast";
+import { formatViews } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface ShortCardProps {
   short: Video;
@@ -23,31 +26,62 @@ interface ShortCardProps {
 function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, setHasInteracted }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(short.likes || 0);
+  const [commentCount, setCommentCount] = useState(0);
+  const [isInteracting, setIsInteracting] = useState(false);
 
+  // Effect for fetching comment count
+  useEffect(() => {
+    if (!short.id) return;
+    const commentsRef = collection(db, "videos", short.id, "comments");
+    const unsubscribe = onSnapshot(commentsRef, (snapshot) => {
+        setCommentCount(snapshot.size);
+    }, (error) => {
+        console.error("Error fetching comment count:", error);
+    });
+    return () => unsubscribe();
+  }, [short.id]);
+  
+  // Effect for checking initial like status
+  useEffect(() => {
+    if (!user || !short.id) {
+        setIsLiked(false);
+        return;
+    };
+    const likeRef = doc(db, "videos", short.id, "likes", user.uid);
+    const unsubscribe = onSnapshot(likeRef, (doc) => {
+        setIsLiked(doc.exists());
+    });
+    return () => unsubscribe();
+  }, [user, short.id]);
+
+
+  // Effect for video playback based on intersection
   useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
     if (isIntersecting) {
-      videoElement.muted = !hasInteracted;
-      videoElement.play().then(() => setIsPlaying(true)).catch(error => {
-        console.error("Video play failed:", error);
-        setIsPlaying(false);
-      });
+      videoElement.muted = isMuted;
+      const playPromise = videoElement.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => setIsPlaying(true)).catch(error => {
+          setIsPlaying(false);
+          // Autoplay was prevented. User may need to interact first.
+        });
+      }
     } else {
       videoElement.pause();
       setIsPlaying(false);
-      if(videoElement.currentTime) {
+      if(videoElement.currentTime > 0) {
         videoElement.currentTime = 0;
       }
     }
-  }, [isIntersecting, hasInteracted]);
-  
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
+  }, [isIntersecting, isMuted]);
 
   const handleVideoPress = () => {
     if (!hasInteracted) {
@@ -57,7 +91,7 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
     const videoElement = videoRef.current;
     if (!videoElement) return;
     if (videoElement.paused) {
-      videoElement.play();
+      videoElement.play().catch(e => console.error("Play failed", e));
     } else {
       videoElement.pause();
     }
@@ -65,9 +99,40 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
 
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setHasInteracted(true);
+    if (!hasInteracted) setHasInteracted(true);
     setIsMuted(!isMuted);
   };
+  
+  const handleLikeToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user || isInteracting) {
+        if (!user) toast({ variant: 'destructive', title: 'You must be logged in to like videos.'});
+        return;
+    };
+    setIsInteracting(true);
+    const likeRef = doc(db, "videos", short.id, "likes", user.uid);
+    const videoRef = doc(db, "videos", short.id);
+
+    try {
+      const likeSnap = await getDoc(likeRef);
+      if (likeSnap.exists()) {
+        await deleteDoc(likeRef);
+        await updateDoc(videoRef, { likes: increment(-1) });
+        setLikeCount(prev => Math.max(0, prev - 1));
+        setIsLiked(false);
+      } else {
+        await setDoc(likeRef, { likedAt: new Date() });
+        await updateDoc(videoRef, { likes: increment(1) });
+        setLikeCount(prev => prev + 1);
+        setIsLiked(true);
+      }
+    } catch (error) {
+      console.error("Like error:", error);
+      toast({ variant: 'destructive', title: 'Error updating like status.' });
+    } finally {
+      setIsInteracting(false);
+    }
+  }
 
   if (!short.channel) return null;
 
@@ -83,7 +148,7 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
         onPause={() => setIsPlaying(false)}
       />
       
-      {!isPlaying && (
+      {!isPlaying && hasInteracted && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
             <Play className="h-16 w-16 text-white/70" />
         </div>
@@ -109,13 +174,13 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
       </div>
       
       <div className="absolute bottom-4 right-2 flex flex-col items-center gap-4 text-white">
-        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
-          <Heart className="h-8 w-8" />
-          <span className="text-xs">1.2M</span>
+        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={handleLikeToggle} disabled={!user || isInteracting}>
+          <Heart className={cn("h-8 w-8 transition-colors", isLiked && "fill-red-500 text-red-500")} />
+          <span className="text-xs font-semibold">{formatViews(likeCount)}</span>
         </Button>
         <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
           <MessageCircle className="h-8 w-8" />
-          <span className="text-xs">5,123</span>
+          <span className="text-xs font-semibold">{formatViews(commentCount)}</span>
         </Button>
         <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
           <Send className="h-8 w-8" />
