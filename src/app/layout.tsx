@@ -63,9 +63,11 @@ export default function RootLayout({
         ) : (
           <AuthProvider>
             <UploadProvider>
-              {children}
-              <Toaster />
-              <UploadProgressIndicator />
+              <>
+                {children}
+                <Toaster />
+                <UploadProgressIndicator />
+              </>
             </UploadProvider>
           </AuthProvider>
         )}
