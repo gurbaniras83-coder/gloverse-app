@@ -9,16 +9,16 @@ import { Heart, MessageCircle, Send, Play, Pause, Volume2, VolumeX, Loader2 } fr
 import { db } from "@/lib/firebase";
 import { collection, query, where, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
 import type { Channel } from "@/lib/types";
-import { useSearchParams } from "next/navigation";
 
 interface ShortCardProps {
   short: Video;
   isIntersecting: boolean;
   isMuted: boolean;
   toggleMute: (e: React.MouseEvent) => void;
+  setIsMuted: (isMuted: boolean) => void;
 }
 
-function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProps) {
+function ShortCard({ short, isIntersecting, isMuted, toggleMute, setIsMuted }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -26,7 +26,6 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProp
     const videoElement = videoRef.current;
     if (isIntersecting) {
       videoElement?.play().then(() => setIsPlaying(true)).catch(error => {
-        // Autoplay was prevented, user might need to interact first.
         console.error("Video play failed:", error);
         setIsPlaying(false);
       });
@@ -47,12 +46,15 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute }: ShortCardProp
 
   const togglePlay = () => {
     const videoElement = videoRef.current;
-    if (videoElement?.paused) {
-      videoElement?.play();
-      setIsPlaying(true);
+    if (!videoElement) return;
+
+    if (videoElement.paused) {
+      if (isMuted) {
+        setIsMuted(false);
+      }
+      videoElement.play();
     } else {
-      videoElement?.pause();
-      setIsPlaying(false);
+      videoElement.pause();
     }
   };
 
@@ -150,7 +152,6 @@ export function ShortsPlayer() {
 
         fetchedShorts = fetchedShorts.filter(v => v.channel);
         
-        // If a specific short is requested via URL hash, move it to the top
         const hashId = window.location.hash.substring(1);
         if (hashId) {
             const requestedShortIndex = fetchedShorts.findIndex(s => s.id === hashId);
@@ -175,7 +176,6 @@ export function ShortsPlayer() {
   useEffect(() => {
     if (loading || shorts.length === 0) return;
     
-    // Set the first short as visible initially
     if (!visibleShortId) {
         setVisibleShortId(shorts[0].id);
     }
@@ -186,7 +186,6 @@ export function ShortsPlayer() {
           if (entry.isIntersecting) {
             const shortId = entry.target.getAttribute("data-short-id");
             setVisibleShortId(shortId);
-            // Also update URL hash for shareability
             if(shortId) {
                 const newUrl = `${window.location.pathname}#${shortId}`;
                 window.history.replaceState(null, '', newUrl);
@@ -195,13 +194,12 @@ export function ShortsPlayer() {
           }
         }
       },
-      { threshold: 0.7 } // 70% of the item must be visible
+      { threshold: 0.7 }
     );
 
     const shortsElements = containerRef.current?.querySelectorAll("[data-short-id]");
     shortsElements?.forEach((el) => observer.observe(el));
 
-    // Scroll to the short specified in the hash on initial load
     const hashId = window.location.hash.substring(1);
     if(hashId) {
         const element = document.querySelector(`[data-short-id="${hashId}"]`);
@@ -239,6 +237,7 @@ export function ShortsPlayer() {
               isIntersecting={visibleShortId === short.id}
               isMuted={isMuted}
               toggleMute={toggleMute}
+              setIsMuted={setIsMuted}
             />
         </div>
       ))}

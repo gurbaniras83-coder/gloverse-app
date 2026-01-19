@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams } from 'next/navigation';
@@ -20,7 +19,6 @@ import { ShortsShelf } from '@/components/shorts-shelf';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { BottomNav } from '@/components/layout/bottom-nav';
-
 
 function ChannelPageContent() {
     const params = useParams();
@@ -60,8 +58,8 @@ function ChannelPageContent() {
                     setJoinedDate(new Date(channelData.createdAt).toLocaleDateString());
                 }
             }
-
-            if (user?.uid === channelData.id) {
+            
+            if (user?.channel?.id === channelData.id) {
                 setIsOwner(true);
             }
 
@@ -77,7 +75,7 @@ function ChannelPageContent() {
             
             setChannel(channelData);
 
-            if (user && user.uid !== channelData.id) {
+            if (user && user.channel?.id !== channelData.id) {
                 const subDocRef = doc(db, "users", user.uid, "subscriptions", channelData.id);
                 const subDoc = await getDoc(subDocRef);
                 setIsSubscribed(subDoc.exists());
@@ -175,8 +173,8 @@ function ChannelPageContent() {
                 {isOwner ? (
                     <>
                         <Button asChild className="flex-1 rounded-full"><Link href="/studio">Manage videos</Link></Button>
-                        <Button variant="secondary" size="icon" className="rounded-full"><BarChart2 className="h-5 w-5" /></Button>
-                        <Button variant="secondary" size="icon" className="rounded-full"><Edit className="h-5 w-5" /></Button>
+                        <Button asChild variant="secondary" size="icon" className="rounded-full"><Link href="/studio"><BarChart2 className="h-5 w-5" /></Link></Button>
+                        <Button asChild variant="secondary" size="icon" className="rounded-full"><Link href="/studio/customize"><Edit className="h-5 w-5" /></Link></Button>
                     </>
                 ) : (
                     <Button onClick={handleSubscribeToggle} disabled={!user || isSubscribing} className="flex-1 rounded-full" variant={isSubscribed ? 'secondary' : 'default'}>

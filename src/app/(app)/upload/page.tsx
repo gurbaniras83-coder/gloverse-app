@@ -174,7 +174,7 @@ export default function UploadPage() {
         visibility: data.visibility,
         audience: data.audience,
         views: 0,
-        likes: [],
+        likes: 0,
         createdAt: serverTimestamp(),
         duration: videoDuration,
       });
