@@ -54,14 +54,18 @@ export function VideoCard({ video }: VideoCardProps) {
   return (
     <div onClick={handleCardClick} className="block w-full cursor-pointer group">
       <div className="flex flex-col space-y-3">
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl">
-          <Image
-            src={video.thumbnailUrl}
-            alt={video.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            data-ai-hint="video thumbnail"
-          />
+        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
+          {video.thumbnailUrl ? (
+            <Image
+              src={video.thumbnailUrl}
+              alt={video.title}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              data-ai-hint="video thumbnail"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center" />
+          )}
           <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
             {duration}
           </div>

@@ -221,8 +221,8 @@ function ChannelPageContent() {
                      {shorts.length > 0 ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {shorts.map(short => (
-                                 <Link href={`/shorts#${short.id}`} key={short.id} className="relative aspect-[9/16] rounded-lg overflow-hidden group">
-                                     <Image src={short.thumbnailUrl} alt={short.title} fill style={{objectFit:"cover"}} />
+                                 <Link href={`/shorts#${short.id}`} key={short.id} className="relative aspect-[9/16] rounded-lg overflow-hidden group bg-secondary">
+                                     {short.thumbnailUrl && <Image src={short.thumbnailUrl} alt={short.title} fill style={{objectFit:"cover"}} />}
                                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
                                      <div className="absolute bottom-0 left-0 p-2 text-white bg-gradient-to-t from-black/60 to-transparent w-full">
                                         <p className="text-sm font-semibold truncate">{short.title}</p>
