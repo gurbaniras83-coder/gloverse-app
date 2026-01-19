@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Video, Image as ImageIcon, UploadCloud, ChevronLeft, Globe, Lock, Users, ShieldAlert } from "lucide-react";
+import { Loader2, Video, Image as ImageIcon, UploadCloud, ChevronLeft, Globe, Lock, Users, ShieldAlert, X } from "lucide-react";
 import {
   ref,
   uploadBytesResumable,
@@ -69,11 +70,11 @@ export default function UploadPage() {
   });
 
   useEffect(() => {
-    // Trigger file input if no video is selected
-    if (!form.getValues("videoFile")) {
+    // Trigger file input if no video is selected and not uploading
+    if (!form.getValues("videoFile") && !isUploading) {
       videoInputRef.current?.click();
     }
-  }, [form]);
+  }, [form, isUploading]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'video' | 'thumbnail') => {
     const file = e.target.files?.[0];
@@ -155,10 +156,17 @@ export default function UploadPage() {
       const videoURL = await uploadFile(data.videoFile, `videos/${videoFileName}`);
       
       let thumbnailURL = "";
+      // Use the generated thumbnail if the user hasn't selected a custom one.
       const thumbFile = form.getValues("thumbnailFile");
       if (thumbFile) {
         const thumbnailFileName = `${user.uid}/${Date.now()}-thumbnail.jpg`;
         thumbnailURL = await uploadFile(thumbFile, `thumbnails/${thumbnailFileName}`);
+      } else if (thumbnailPreview) {
+        // This case handles the auto-generated thumbnail
+        const blob = await (await fetch(thumbnailPreview)).blob();
+        const thumbnailFile = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
+        const thumbnailFileName = `${user.uid}/${Date.now()}-autothumb.jpg`;
+        thumbnailURL = await uploadFile(thumbnailFile, `thumbnails/${thumbnailFileName}`);
       }
       
       const videoType = videoDuration < 60 ? 'short' : 'long';
@@ -180,6 +188,14 @@ export default function UploadPage() {
       });
 
       toast({ title: "Success", description: "Your video has been published!" });
+      // Show native notification if permission is granted
+      if (Notification.permission === "granted") {
+        new Notification("Upload Complete!", {
+          body: `'${data.title}' has been published.`,
+          icon: thumbnailURL || '/favicon.ico'
+        });
+      }
+
       router.push(`/@${user.channel.handle}`);
     } catch (error: any) {
       console.error("Upload failed", error);
@@ -188,143 +204,170 @@ export default function UploadPage() {
     }
   };
 
+  // Request notification permission on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
+
   return (
-    <div className="p-4 max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                <ChevronLeft className="w-6 h-6" />
-            </Button>
-            <h1 className="text-xl font-bold font-headline">{isShort ? "Create a Short" : "Upload Video"}</h1>
-            <div className="w-10"></div>
-        </div>
-
-      {isUploading ? (
-        <div className="flex flex-col items-center justify-center space-y-4 pt-16">
-            <UploadCloud className="w-24 h-24 text-primary animate-pulse" />
-            <p className="text-lg font-semibold">Publishing your video...</p>
-            <div className="w-full max-w-md">
-                <Progress value={uploadProgress.percentage} className="w-full" />
-                <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                    <span>{formatBytes(uploadProgress.transferred)} / {formatBytes(uploadProgress.total)}</span>
-                    <span>{Math.round(uploadProgress.percentage)}%</span>
-                </div>
-            </div>
-            <p className="text-sm text-muted-foreground mt-4 text-center">Please keep this page open until the upload is complete.</p>
-        </div>
-      ) : (
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="space-y-4">
-                {videoPreview ? (
-                    <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
-                        <video src={videoPreview} className="max-h-full" controls />
-                    </div>
-                ) : (
-                  <div 
-                    className="relative aspect-video w-full rounded-xl overflow-hidden bg-secondary flex flex-col items-center justify-center cursor-pointer hover:bg-muted"
-                    onClick={() => videoInputRef.current?.click()}
-                  >
-                    <UploadCloud className="w-16 h-16 text-muted-foreground"/>
-                    <p className="text-muted-foreground mt-2">Tap to select a video file</p>
-                  </div>
-                )}
-                 <div className="flex gap-4">
-                    <div
-                        className="relative w-24 h-36 flex flex-col items-center justify-center p-2 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary"
-                        onClick={() => thumbnailInputRef.current?.click()}
+    <>
+      <div className={`p-4 max-w-3xl mx-auto ${isUploading ? 'pointer-events-none opacity-50' : ''}`}>
+          <div className="flex items-center justify-between mb-6">
+              <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                  <ChevronLeft className="w-6 h-6" />
+              </Button>
+              <h1 className="text-xl font-bold font-headline">{isShort ? "Create a Short" : "Upload Video"}</h1>
+              <div className="w-10"></div>
+          </div>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="space-y-4">
+                  {videoPreview ? (
+                      <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
+                          <video src={videoPreview} className="max-h-full" controls />
+                      </div>
+                  ) : (
+                    <div 
+                      className="relative aspect-video w-full rounded-xl overflow-hidden bg-secondary flex flex-col items-center justify-center cursor-pointer hover:bg-muted"
+                      onClick={() => videoInputRef.current?.click()}
                     >
-                        {thumbnailPreview ? (
-                        <NextImage src={thumbnailPreview} alt="Thumbnail preview" layout="fill" className="rounded-md object-cover" />
-                        ) : (
-                        <div className="text-center">
-                            <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground" />
-                            <p className="mt-1 text-xs text-muted-foreground">Add thumbnail</p>
-                        </div>
-                        )}
+                      <UploadCloud className="w-16 h-16 text-muted-foreground"/>
+                      <p className="text-muted-foreground mt-2">Tap to select a video file</p>
                     </div>
-                     <div className="flex-1 space-y-2">
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                            <FormItem>
-                            <FormControl><Input placeholder="Title (required)" {...field} className="text-lg border-0 px-0 shadow-none focus-visible:ring-0" /></FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}/>
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                            <FormItem>
-                                <FormControl><Textarea placeholder="Add a description" {...field} className="text-base border-0 px-0 shadow-none focus-visible:ring-0 h-24" /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}/>
-                     </div>
+                  )}
+                   <div className="flex gap-4">
+                      <div
+                          className="relative w-24 h-36 flex flex-col items-center justify-center p-2 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary"
+                          onClick={() => thumbnailInputRef.current?.click()}
+                      >
+                          {thumbnailPreview ? (
+                          <NextImage src={thumbnailPreview} alt="Thumbnail preview" layout="fill" className="rounded-md object-cover" />
+                          ) : (
+                          <div className="text-center">
+                              <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground" />
+                              <p className="mt-1 text-xs text-muted-foreground">Add thumbnail</p>
+                          </div>
+                          )}
+                      </div>
+                       <div className="flex-1 space-y-2">
+                          <FormField control={form.control} name="title" render={({ field }) => (
+                              <FormItem>
+                              <FormControl><Input placeholder="Title (required)" {...field} className="text-lg border-0 px-0 shadow-none focus-visible:ring-0" /></FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}/>
+                          <FormField control={form.control} name="description" render={({ field }) => (
+                              <FormItem>
+                                  <FormControl><Textarea placeholder="Add a description" {...field} className="text-base border-0 px-0 shadow-none focus-visible:ring-0 h-24" /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )}/>
+                       </div>
+                  </div>
+              </div>
+
+              <FormField control={form.control} name="visibility" render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-lg font-semibold">Visibility</FormLabel>
+                     <FormDescription>Choose who can see your video.</FormDescription>
+                    <FormControl>
+                      <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                        <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
+                           <Globe className="w-6 h-6 text-muted-foreground"/>
+                           <div className="flex-1">
+                              <FormControl><RadioGroupItem value="public" className="sr-only"/></FormControl>
+                              <FormLabel className="font-normal text-base">Public</FormLabel>
+                              <FormDescription>Anyone can watch your video</FormDescription>
+                           </div>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
+                          <Lock className="w-6 h-6 text-muted-foreground"/>
+                          <div className="flex-1">
+                              <FormControl><RadioGroupItem value="private" className="sr-only"/></FormControl>
+                              <FormLabel className="font-normal text-base">Private</FormLabel>
+                              <FormDescription>Only you can watch your video</FormDescription>
+                          </div>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+              )}/>
+              
+              <FormField control={form.control} name="audience" render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-lg font-semibold">Audience</FormLabel>
+                     <FormDescription>Is this video made for kids?</FormDescription>
+                    <FormControl>
+                      <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                        <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
+                           <Users className="w-6 h-6 text-muted-foreground"/>
+                           <div className="flex-1">
+                              <FormControl><RadioGroupItem value="none" className="sr-only"/></FormControl>
+                              <FormLabel className="font-normal text-base">No, it's not made for kids</FormLabel>
+                              <FormDescription>Your content will be available to a general audience.</FormDescription>
+                           </div>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
+                          <ShieldAlert className="w-6 h-6 text-muted-foreground"/>
+                          <div className="flex-1">
+                              <FormControl><RadioGroupItem value="kids" className="sr-only"/></FormControl>
+                              <FormLabel className="font-normal text-base">Yes, it's made for kids</FormLabel>
+                              <FormDescription>Features like comments will be restricted.</FormDescription>
+                          </div>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+              )}/>
+
+              <Input type="file" accept="video/*" ref={videoInputRef} className="hidden" onChange={(e) => handleFileChange(e, 'video')} />
+              <Input type="file" accept="image/*" ref={thumbnailInputRef} className="hidden" onChange={(e) => handleFileChange(e, 'thumbnail')} />
+
+              <Button type="submit" size="lg" className="w-full" disabled={!videoPreview || isUploading}>
+                Publish
+              </Button>
+            </form>
+          </Form>
+      </div>
+
+       {isUploading && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 max-w-[500px] mx-auto">
+            <div className="bg-secondary rounded-lg shadow-2xl p-4 border border-border">
+                <div className="flex items-start gap-4">
+                    {thumbnailPreview ? (
+                        <div className="relative w-16 h-10 rounded-md overflow-hidden flex-shrink-0">
+                           <NextImage src={thumbnailPreview} alt="uploading thumbnail" layout="fill" className="object-cover" />
+                        </div>
+                    ) : (
+                        <div className="w-16 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                            <Video className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                       <p className="text-sm font-semibold truncate">Uploading your video...</p>
+                       <p className="text-xs text-muted-foreground truncate">{form.getValues('title') || '...'}</p>
+                       <Progress value={uploadProgress.percentage} className="w-full mt-2 h-2" />
+                       <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                           <span>{Math.round(uploadProgress.percentage)}%</span>
+                           <span>{formatBytes(uploadProgress.transferred)} / {formatBytes(uploadProgress.total)}</span>
+                       </div>
+                    </div>
+                     <Button variant="ghost" size="icon" className="flex-shrink-0 -mt-2 -mr-2" onClick={() => { /* In a real app, this would cancel the upload */ setIsUploading(false); }}>
+                        <X className="w-4 h-4"/>
+                    </Button>
                 </div>
             </div>
-
-            <FormField control={form.control} name="visibility" render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-lg font-semibold">Visibility</FormLabel>
-                   <FormDescription>Choose who can see your video.</FormDescription>
-                  <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
-                         <Globe className="w-6 h-6 text-muted-foreground"/>
-                         <div className="flex-1">
-                            <FormControl><RadioGroupItem value="public" className="sr-only"/></FormControl>
-                            <FormLabel className="font-normal text-base">Public</FormLabel>
-                            <FormDescription>Anyone can watch your video</FormDescription>
-                         </div>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
-                        <Lock className="w-6 h-6 text-muted-foreground"/>
-                        <div className="flex-1">
-                            <FormControl><RadioGroupItem value="private" className="sr-only"/></FormControl>
-                            <FormLabel className="font-normal text-base">Private</FormLabel>
-                            <FormDescription>Only you can watch your video</FormDescription>
-                        </div>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-            
-            <FormField control={form.control} name="audience" render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-lg font-semibold">Audience</FormLabel>
-                   <FormDescription>Is this video made for kids?</FormDescription>
-                  <FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
-                         <Users className="w-6 h-6 text-muted-foreground"/>
-                         <div className="flex-1">
-                            <FormControl><RadioGroupItem value="none" className="sr-only"/></FormControl>
-                            <FormLabel className="font-normal text-base">No, it's not made for kids</FormLabel>
-                            <FormDescription>Your content will be available to a general audience.</FormDescription>
-                         </div>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0 p-3 rounded-lg hover:bg-secondary has-[[data-state=checked]]:bg-secondary">
-                        <ShieldAlert className="w-6 h-6 text-muted-foreground"/>
-                        <div className="flex-1">
-                            <FormControl><RadioGroupItem value="kids" className="sr-only"/></FormControl>
-                            <FormLabel className="font-normal text-base">Yes, it's made for kids</FormLabel>
-                            <FormDescription>Features like comments will be restricted.</FormDescription>
-                        </div>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-
-            {/* Hidden file inputs */}
-            <Input type="file" accept="video/*" ref={videoInputRef} className="hidden" onChange={(e) => handleFileChange(e, 'video')} />
-            <Input type="file" accept="image/*" ref={thumbnailInputRef} className="hidden" onChange={(e) => handleFileChange(e, 'thumbnail')} />
-
-            <Button type="submit" size="lg" className="w-full" disabled={!videoPreview || isUploading}>
-              {isUploading ? <Loader2 className="animate-spin" /> : 'Publish'}
-            </Button>
-          </form>
-        </Form>
+        </div>
       )}
-    </div>
+    </>
   );
 }
+
+    

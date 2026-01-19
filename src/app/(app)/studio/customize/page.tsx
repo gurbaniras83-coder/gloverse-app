@@ -126,6 +126,7 @@ export default function CustomizeChannelPage() {
     }
     
     setIsSaving(true);
+    toast({ title: "Saving changes...", description: "Please wait." });
     
     try {
       let photoURL = user.channel.photoURL;
@@ -138,19 +139,24 @@ export default function CustomizeChannelPage() {
           uploadTask.on(
             "state_changed",
             () => {},
-            (error) => reject(error),
+            (error) => {
+                console.error("Upload Error:", error);
+                reject(new Error(`Failed to upload ${file.name}.`));
+            },
             () => getDownloadURL(uploadTask.snapshot.ref).then(resolve)
           );
         });
       };
       
       if (avatarFile) {
-        const avatarPath = `avatars/${user.uid}/${avatarFile.name}`;
+        toast({ title: "Uploading avatar..." });
+        const avatarPath = `avatars/${user.uid}/${Date.now()}_${avatarFile.name}`;
         photoURL = await uploadFile(avatarFile, avatarPath);
       }
 
       if (bannerFile) {
-        const bannerPath = `banners/${user.uid}/${bannerFile.name}`;
+        toast({ title: "Uploading banner..." });
+        const bannerPath = `banners/${user.uid}/${Date.now()}_${bannerFile.name}`;
         bannerUrl = await uploadFile(bannerFile, bannerPath);
       }
       
@@ -168,7 +174,7 @@ export default function CustomizeChannelPage() {
       router.refresh(); // Force refresh to update user context
     } catch (error: any) {
       console.error("Save failed", error);
-      toast({ variant: "destructive", title: "Save Failed", description: error.message });
+      toast({ variant: "destructive", title: "Save Failed", description: error.message || "An unexpected error occurred." });
     } finally {
         setIsSaving(false);
     }

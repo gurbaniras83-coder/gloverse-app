@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useAuth } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";
-import { Loader2, Users, Clock, ThumbsUp, Video as VideoIcon, Edit, Trash2 } from "lucide-react";
+import { Loader2, Users, Eye, ThumbsUp, Video as VideoIcon, Edit, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { VideoCard } from "@/components/video-card";
 import { Button } from "@/components/ui/button";
@@ -40,12 +41,31 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ViewsChart } from "@/components/analytics/views-chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 const editVideoSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().max(5000).optional(),
 });
 type EditVideoFormValues = z.infer<typeof editVideoSchema>;
+
+const StatCard = ({ title, value, change, icon: Icon }: { title: string, value: string, change?: number, icon: React.ElementType }) => (
+    <div className="p-4 bg-secondary rounded-lg">
+        <div className="flex justify-between items-center mb-1">
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <Icon className="w-5 h-5 text-muted-foreground"/>
+        </div>
+        <p className="text-3xl font-bold">{value}</p>
+        {change !== undefined && (
+            <p className={`text-xs flex items-center ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {change >= 0 ? '🔼' : '🔽'} {Math.abs(change)}% in last 28 days
+            </p>
+        )}
+    </div>
+);
+
 
 export default function StudioPage() {
   const { user, loading } = useAuth();
@@ -56,6 +76,7 @@ export default function StudioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalViews, setTotalViews] = useState(0);
   const [totalLikes, setTotalLikes] = useState(0);
+  const [totalWatchTime, setTotalWatchTime] = useState(0);
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -94,8 +115,10 @@ export default function StudioPage() {
         
         const views = userVideos.reduce((acc, video) => acc + (video.views || 0), 0);
         const likes = userVideos.reduce((acc, video) => acc + (video.likes || 0), 0);
+        const watchTime = userVideos.reduce((acc, video) => acc + ((video.views || 0) * video.duration), 0) / 3600; // in hours
         setTotalViews(views);
         setTotalLikes(likes);
+        setTotalWatchTime(watchTime);
 
       } catch (error) {
         console.error("Error fetching user videos:", error);
@@ -147,10 +170,17 @@ export default function StudioPage() {
       
       // Delete files from Storage
       const deleteFileFromURL = async (url: string) => {
-        if(!url.includes('firebasestorage')) return; // Not a storage URL
-        const filePath = decodeURIComponent(url.split('/o/')[1].split('?')[0]);
-        const fileRef = ref(storage, filePath);
-        await deleteObject(fileRef);
+        if(!url || !url.includes('firebasestorage')) return; // Not a storage URL
+        try {
+          const filePath = decodeURIComponent(url.split('/o/')[1].split('?')[0]);
+          const fileRef = ref(storage, filePath);
+          await deleteObject(fileRef);
+        } catch (storageError: any) {
+          if(storageError.code !== 'storage/object-not-found') {
+            console.error("Could not delete file from storage: ", storageError);
+            // Non-critical, so we don't re-throw. Just log it.
+          }
+        }
       }
       await deleteFileFromURL(selectedVideo.videoUrl);
       if (selectedVideo.thumbnailUrl) {
@@ -161,7 +191,7 @@ export default function StudioPage() {
       toast({ title: "Video deleted successfully" });
     } catch (error) {
       console.error("Error deleting video:", error);
-      toast({ variant: "destructive", title: "Error deleting video", description: "Could not delete video files from storage." });
+      toast({ variant: "destructive", title: "Error deleting video", description: "Could not delete video from database." });
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
@@ -185,77 +215,79 @@ export default function StudioPage() {
       <div className="p-4 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold font-headline">Gloverse Studio</h1>
-          <Button asChild variant="outline">
+           <Button asChild variant="outline" size="sm">
             <Link href={`/@${user.channel.handle}`}>View Channel</Link>
           </Button>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Channel Analytics</CardTitle>
-            <CardDescription>Current stats for your channel.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 text-center">
-            <div className="p-4 bg-secondary rounded-lg">
-              <Users className="w-6 h-6 mx-auto mb-2 text-primary"/>
-              <p className="text-2xl font-bold">{formatViews(user.channel.subscribers)}</p>
-              <p className="text-sm text-muted-foreground">Subscribers</p>
-            </div>
-            <div className="p-4 bg-secondary rounded-lg">
-              <Clock className="w-6 h-6 mx-auto mb-2 text-primary"/>
-              <p className="text-2xl font-bold">{formatViews(totalViews)}</p>
-              <p className="text-sm text-muted-foreground">Views</p>
-            </div>
-            <div className="p-4 bg-secondary rounded-lg">
-              <VideoIcon className="w-6 h-6 mx-auto mb-2 text-primary"/>
-              <p className="text-2xl font-bold">{videos.length}</p>
-              <p className="text-sm text-muted-foreground">Videos</p>
-            </div>
-            <div className="p-4 bg-secondary rounded-lg">
-              <ThumbsUp className="w-6 h-6 mx-auto mb-2 text-primary"/>
-              <p className="text-2xl font-bold">{formatViews(totalLikes)}</p>
-              <p className="text-sm text-muted-foreground">Likes</p>
-            </div>
-          </CardContent>
-        </Card>
         
-        {latestVideo && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Latest Video Performance</CardTitle>
-              <CardDescription>Stats for your newest video.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <VideoCard video={latestVideo} />
-            </CardContent>
-          </Card>
-        )}
+        <Tabs defaultValue="dashboard" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="content">Content</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dashboard" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Channel Analytics</CardTitle>
+                    <CardDescription>A summary of your channel's performance.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    <StatCard title="Subscribers" value={formatViews(user.channel.subscribers)} icon={Users} change={5.2} />
+                    <StatCard title="Views" value={formatViews(totalViews)} icon={Eye} change={12.1}/>
+                     <StatCard title="Watch Time (h)" value={totalWatchTime.toFixed(1)} icon={Loader2} change={8.5}/>
+                    <StatCard title="Likes" value={formatViews(totalLikes)} icon={ThumbsUp} change={-1.2}/>
+                  </CardContent>
+                </Card>
 
-        <Separator />
-
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Manage Videos</h2>
-            <Button asChild variant="default" size="sm">
-              <Link href="/upload">Upload New</Link>
-            </Button>
-          </div>
-          {videos.length > 0 ? (
-            <div className="space-y-4">
-              {videos.map(video => (
-                <div key={video.id} className="p-2 rounded-lg hover:bg-secondary">
-                  <VideoCard video={video} />
-                  <div className="flex gap-2 mt-2">
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => handleEditClick(video)}><Edit className="w-4 h-4 mr-2"/> Edit</Button>
-                      <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteClick(video)}><Trash2 className="w-4 h-4 mr-2"/> Delete</Button>
+                <ViewsChart />
+                
+                {latestVideo && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Latest Video Performance</CardTitle>
+                      <CardDescription>Stats for your newest video.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <VideoCard video={latestVideo} />
+                       <div className="flex gap-2 mt-4">
+                            <Button variant="outline" size="sm" className="w-full" onClick={() => handleEditClick(latestVideo)}><Edit className="w-4 h-4 mr-2"/> Edit</Button>
+                            <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteClick(latestVideo)}><Trash2 className="w-4 h-4 mr-2"/> Delete</Button>
+                        </div>
+                    </CardContent>
+                  </Card>
+                )}
+            </TabsContent>
+            <TabsContent value="content" className="space-y-4 mt-6">
+                 <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold">Manage Content</h2>
+                    <Button asChild variant="default" size="sm">
+                      <Link href="/upload">Upload New</Link>
+                    </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">You haven't uploaded any videos yet.</p>
-          )}
-        </div>
+                   {videos.length > 0 ? (
+                    <div className="space-y-4">
+                      {videos.map(video => (
+                        <div key={video.id} className="p-2 rounded-lg bg-card border">
+                          <VideoCard video={video} />
+                          <div className="flex gap-2 mt-2">
+                              <Button variant="outline" size="sm" className="w-full" onClick={() => handleEditClick(video)}><Edit className="w-4 h-4 mr-2"/> Edit</Button>
+                              <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteClick(video)}><Trash2 className="w-4 h-4 mr-2"/> Delete</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 border-2 border-dashed rounded-xl">
+                        <VideoIcon className="mx-auto h-12 w-12 text-muted-foreground"/>
+                        <h3 className="mt-4 text-lg font-semibold">No content available</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">Get started by uploading a video.</p>
+                        <Button asChild className="mt-4">
+                            <Link href="/upload">Upload video</Link>
+                        </Button>
+                    </div>
+                  )}
+            </TabsContent>
+        </Tabs>
       </div>
       
       {/* Edit Dialog */}
@@ -312,3 +344,5 @@ export default function StudioPage() {
     </>
   );
 }
+
+    

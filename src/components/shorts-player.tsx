@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -14,29 +15,33 @@ interface ShortCardProps {
   short: Video;
   isIntersecting: boolean;
   isMuted: boolean;
-  toggleMute: (e: React.MouseEvent) => void;
   setIsMuted: (isMuted: boolean) => void;
 }
 
-function ShortCard({ short, isIntersecting, isMuted, toggleMute, setIsMuted }: ShortCardProps) {
+function ShortCard({ short, isIntersecting, isMuted, setIsMuted }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasBeenTapped, setHasBeenTapped] = useState(false);
 
   useEffect(() => {
     const videoElement = videoRef.current;
+    if (!videoElement) return;
+
     if (isIntersecting) {
-      videoElement?.play().then(() => setIsPlaying(true)).catch(error => {
+      // Start playing muted when it comes into view
+      videoElement.muted = isMuted && !hasBeenTapped;
+      videoElement.play().then(() => setIsPlaying(true)).catch(error => {
         console.error("Video play failed:", error);
         setIsPlaying(false);
       });
     } else {
-      videoElement?.pause();
+      videoElement.pause();
       setIsPlaying(false);
-      if(videoElement?.currentTime) {
+      if(videoElement.currentTime) {
         videoElement.currentTime = 0;
       }
     }
-  }, [isIntersecting]);
+  }, [isIntersecting, isMuted, hasBeenTapped]);
   
   useEffect(() => {
     if (videoRef.current) {
@@ -47,21 +52,37 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute, setIsMuted }: S
   const togglePlay = () => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
-
     if (videoElement.paused) {
-      if (isMuted) {
-        setIsMuted(false);
-      }
       videoElement.play();
     } else {
       videoElement.pause();
     }
   };
 
+  const handleVideoPress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!hasBeenTapped) {
+      setHasBeenTapped(true);
+      if (isMuted) {
+        setIsMuted(false);
+      }
+    }
+    togglePlay();
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(!isMuted);
+    if (!isMuted) {
+      setHasBeenTapped(true); // If user manually mutes, we consider it an interaction
+    }
+  };
+
+
   if (!short.channel) return null;
 
   return (
-    <div className="relative h-full w-full snap-start overflow-hidden bg-black" onClick={togglePlay}>
+    <div className="relative h-full w-full snap-start overflow-hidden bg-black" onClick={handleVideoPress}>
       <video
         ref={videoRef}
         src={short.videoUrl}
@@ -73,15 +94,21 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute, setIsMuted }: S
       />
       
       {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
             <Play className="h-16 w-16 text-white/70" />
         </div>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none"></div>
 
-      <div className="absolute bottom-4 left-4 text-white">
-        <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2 group" onClick={e => e.stopPropagation()}>
+      <div className="absolute top-4 right-4 z-10">
+        <button onClick={toggleMute} className="text-white p-2" aria-label="Toggle mute">
+          {isMuted ? <VolumeX className="h-6 w-6"/> : <Volume2 className="h-6 w-6"/>}
+        </button>
+      </div>
+      
+      <div className="absolute bottom-4 left-4 text-white pointer-events-none">
+        <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2 group pointer-events-auto" onClick={e => e.stopPropagation()}>
           <Avatar className="h-10 w-10 border-2 border-white">
             <AvatarImage src={short.channel.photoURL} />
             <AvatarFallback>{short.channel.handle[0]}</AvatarFallback>
@@ -104,9 +131,6 @@ function ShortCard({ short, isIntersecting, isMuted, toggleMute, setIsMuted }: S
           <Send className="h-8 w-8" />
           <span className="text-xs">Share</span>
         </Button>
-        <button onClick={toggleMute} className="mt-2 text-white p-2" aria-label="Toggle mute">
-          {isMuted ? <VolumeX className="h-6 w-6"/> : <Volume2 className="h-6 w-6"/>}
-        </button>
       </div>
     </div>
   );
@@ -176,7 +200,7 @@ export function ShortsPlayer() {
   useEffect(() => {
     if (loading || shorts.length === 0) return;
     
-    if (!visibleShortId) {
+    if (!visibleShortId && shorts.length > 0) {
         setVisibleShortId(shorts[0].id);
     }
 
@@ -212,11 +236,6 @@ export function ShortsPlayer() {
     };
   }, [shorts, loading, visibleShortId]);
 
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMuted(prev => !prev);
-  }
-  
     if(loading) {
         return <div className="h-full w-full flex items-center justify-center text-white bg-black"><Loader2 className="w-8 h-8 animate-spin"/></div>
     }
@@ -236,7 +255,6 @@ export function ShortsPlayer() {
               short={short} 
               isIntersecting={visibleShortId === short.id}
               isMuted={isMuted}
-              toggleMute={toggleMute}
               setIsMuted={setIsMuted}
             />
         </div>
@@ -244,3 +262,5 @@ export function ShortsPlayer() {
     </div>
   );
 }
+
+    
