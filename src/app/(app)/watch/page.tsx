@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
@@ -24,7 +25,7 @@ function WatchPageContent() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  const [video, setVideo] = useState<Video | null>(null);
+  const [video, setVideo] = useState<Video | null | undefined>(undefined);
   const [suggestedVideos, setSuggestedVideos] = useState<Video[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -32,7 +33,10 @@ function WatchPageContent() {
   const [likeCount, setLikeCount] = useState(0);
 
   const fetchVideoData = useCallback(async () => {
-    if (!videoId) return;
+    if (!videoId) {
+        setVideo(null);
+        return
+    };
     
     try {
       const videoRef = doc(db, "videos", videoId);
@@ -62,7 +66,7 @@ function WatchPageContent() {
           await updateDoc(videoRef, { views: increment(1) });
           viewedVideos.push(videoId);
           localStorage.setItem('viewedVideos', JSON.stringify(viewedVideos));
-          setVideo(v => v ? { ...v, views: v.views + 1 } : null);
+          setVideo(v => v ? { ...v, views: (v.views || 0) + 1 } : null);
       }
     } catch(e) {
       console.error(e);
@@ -99,18 +103,23 @@ function WatchPageContent() {
   }, [videoId])
 
   useEffect(() => {
-    fetchVideoData();
-    fetchSuggestedVideos();
-  }, [fetchVideoData, fetchSuggestedVideos]);
+    if (videoId) {
+        setVideo(undefined);
+        fetchVideoData();
+        fetchSuggestedVideos();
+    }
+  }, [videoId, fetchVideoData, fetchSuggestedVideos]);
 
   useEffect(() => {
     const checkStatus = async () => {
         if (!user || !video || authLoading || !video.channel) return;
         
+        // Check Like Status
         const likeRef = doc(db, "videos", video.id, "likes", user.uid);
         const likeSnap = await getDoc(likeRef);
         setIsLiked(likeSnap.exists());
         
+        // Check Subscription Status
         if(user.uid !== video.channel.id) {
             const subRef = doc(db, "users", user.uid, "subscriptions", video.channel.id);
             const subSnap = await getDoc(subRef);
@@ -130,16 +139,18 @@ function WatchPageContent() {
     const videoRef = doc(db, "videos", video.id);
 
     try {
-      if (isLiked) {
+      const isCurrentlyLiked = (await getDoc(likeRef)).exists();
+      if (isCurrentlyLiked) {
         await deleteDoc(likeRef);
         await updateDoc(videoRef, { likes: increment(-1) });
-        setLikeCount(prev => prev - 1);
+        setLikeCount(prev => Math.max(0, prev - 1));
+        setIsLiked(false);
       } else {
         await setDoc(likeRef, { likedAt: new Date() });
         await updateDoc(videoRef, { likes: increment(1) });
         setLikeCount(prev => prev + 1);
+        setIsLiked(true);
       }
-      setIsLiked(!isLiked);
     } catch (error) {
       console.error("Like error:", error);
       toast({ variant: 'destructive', title: 'Error updating like status.' });
@@ -159,18 +170,20 @@ function WatchPageContent() {
     const channelRef = doc(db, "channels", video.channel.id);
     
     try {
+        const isCurrentlySubscribed = (await getDoc(subRef)).exists();
         const batch = writeBatch(db);
-        if (isSubscribed) {
+        if (isCurrentlySubscribed) {
             batch.delete(subRef);
             batch.update(channelRef, { subscribers: increment(-1) });
-            if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: v.channel!.subscribers -1 } } : null);
+            if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: Math.max(0, v.channel!.subscribers -1) } } : null);
+            setIsSubscribed(false);
         } else {
             batch.set(subRef, { subscribedAt: new Date() });
             batch.update(channelRef, { subscribers: increment(1) });
             if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: v.channel!.subscribers + 1 } } : null);
+            setIsSubscribed(true);
         }
         await batch.commit();
-        setIsSubscribed(!isSubscribed);
     } catch (error) {
         console.error("Subscription error:", error);
         toast({ variant: 'destructive', title: 'Error updating subscription.' });
@@ -178,12 +191,16 @@ function WatchPageContent() {
         setIsInteracting(false);
     }
   }
+  
+  if (video === undefined || authLoading) {
+      return <WatchPageSkeleton />;
+  }
 
-  if (!video) {
-    return <WatchPageSkeleton />;
+  if (video === null) {
+      return <div className="flex h-96 items-center justify-center">Video not found.</div>
   }
   
-  const timeAgo = formatDistanceToNow(video.createdAt, { addSuffix: true });
+  const timeAgo = video.createdAt ? formatDistanceToNow(video.createdAt, { addSuffix: true }) : '...';
 
   return (
     <div className="flex flex-col">
@@ -230,13 +247,13 @@ function WatchPageContent() {
             onClick={handleLikeToggle}
             disabled={!user || isInteracting}
           >
-            <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-primary text-primary")} />
+            <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-current text-primary")} />
             {formatViews(likeCount)}
           </Button>
         </div>
         
         <div className="p-3 rounded-lg bg-secondary">
-          <p className="text-sm whitespace-pre-wrap">{video.description}</p>
+          <p className="text-sm whitespace-pre-wrap">{video.description || "No description available."}</p>
         </div>
         
         <Separator />
