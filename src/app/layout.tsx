@@ -30,8 +30,6 @@ export default function RootLayout({
     // This check ensures the splash screen is only shown once per session.
     if (sessionStorage.getItem("splashShown")) {
       setShowSplash(false);
-    } else {
-        setShowSplash(true);
     }
   }, []);
 
@@ -39,13 +37,6 @@ export default function RootLayout({
     sessionStorage.setItem("splashShown", "true");
     setShowSplash(false);
   };
-  
-  // This prevents a flash of the splash screen on server render if it's already been shown.
-  if (typeof window !== "undefined" && sessionStorage.getItem("splashShown")) {
-    if (showSplash) {
-        setShowSplash(false);
-    }
-  }
 
   return (
     <html lang="en" className="dark">
