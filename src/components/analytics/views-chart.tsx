@@ -35,8 +35,11 @@ export function ViewsChart() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Views</CardTitle>
-                <CardDescription>Your channel got {formatViews(totalViews)} views in the last 28 days.</CardDescription>
+                <CardTitle>Views (Sample Data)</CardTitle>
+                <CardDescription>
+                    Your channel got {formatViews(totalViews)} views in the last 28 days. Below is a sample chart.
+                    A backend is required to store and aggregate daily data for this chart to show your channel's actual performance.
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-64 w-full">
@@ -55,5 +58,3 @@ export function ViewsChart() {
         </Card>
     );
 }
-
-    

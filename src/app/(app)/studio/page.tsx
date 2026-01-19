@@ -3,9 +3,8 @@
 
 import { useAuth } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";
-import { Loader2, Users, Eye, ThumbsUp, Video as VideoIcon, Edit, Trash2 } from "lucide-react";
+import { Loader2, Users, Eye, ThumbsUp, Video as VideoIcon, Edit, Trash2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { VideoCard } from "@/components/video-card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -41,7 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ViewsChart } from "@/components/analytics/views-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { Progress } from "@/components/ui/progress";
 
 const editVideoSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -49,18 +48,13 @@ const editVideoSchema = z.object({
 });
 type EditVideoFormValues = z.infer<typeof editVideoSchema>;
 
-const StatCard = ({ title, value, change, icon: Icon }: { title: string, value: string, change?: number, icon: React.ElementType }) => (
+const StatCard = ({ title, value, icon: Icon }: { title: string, value: string, icon: React.ElementType }) => (
     <div className="p-4 bg-secondary rounded-lg">
         <div className="flex justify-between items-center mb-1">
             <p className="text-sm text-muted-foreground">{title}</p>
             <Icon className="w-5 h-5 text-muted-foreground"/>
         </div>
         <p className="text-3xl font-bold">{value}</p>
-        {change !== undefined && (
-            <p className={`text-xs flex items-center ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {change >= 0 ? '🔼' : '🔽'} {Math.abs(change)}% in last 28 days
-            </p>
-        )}
     </div>
 );
 
@@ -113,7 +107,13 @@ export default function StudioPage() {
         
         const views = userVideos.reduce((acc, video) => acc + (video.views || 0), 0);
         const likes = userVideos.reduce((acc, video) => acc + (video.likes || 0), 0);
-        const watchTime = userVideos.reduce((acc, video) => acc + ((video.views || 0) * video.duration), 0) / 3600; // in hours
+        const watchTime = userVideos.reduce((acc, video) => {
+            if (video.type === 'long') {
+                return acc + ((video.views || 0) * video.duration);
+            }
+            return acc;
+        }, 0) / 3600; // in hours
+        
         setTotalViews(views);
         setTotalLikes(likes);
         setTotalWatchTime(watchTime);
@@ -163,7 +163,6 @@ export default function StudioPage() {
     if (!selectedVideo) return;
     setIsDeleting(true);
     try {
-      // Delete Firestore document
       await deleteDoc(doc(db, "videos", selectedVideo.id));
       
       // Note: Deleting files from Cloudinary requires a signed API request from a backend.
@@ -190,7 +189,7 @@ export default function StudioPage() {
     );
   }
 
-  const latestVideo = videos[0];
+  const latestVideo = videos.length > 0 ? videos[0] : null;
 
   return (
     <>
@@ -214,11 +213,36 @@ export default function StudioPage() {
                     <CardDescription>A summary of your channel's performance.</CardDescription>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-4">
-                    <StatCard title="Subscribers" value={formatViews(user.channel.subscribers)} icon={Users} change={5.2} />
-                    <StatCard title="Views" value={formatViews(totalViews)} icon={Eye} change={12.1}/>
-                     <StatCard title="Watch Time (h)" value={totalWatchTime.toFixed(1)} icon={Loader2} change={8.5}/>
-                    <StatCard title="Likes" value={formatViews(totalLikes)} icon={ThumbsUp} change={-1.2}/>
+                    <StatCard title="Subscribers" value={formatViews(user.channel.subscribers)} icon={Users} />
+                    <StatCard title="Views" value={formatViews(totalViews)} icon={Eye} />
+                    <StatCard title="Watch Time (h)" value={totalWatchTime.toFixed(1)} icon={Loader2}/>
+                    <StatCard title="Likes" value={formatViews(totalLikes)} icon={ThumbsUp} />
                   </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><DollarSign /> Monetization</CardTitle>
+                        <CardDescription>Track your progress towards monetization eligibility.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium">
+                                <span>Subscribers</span>
+                                <span>{formatViews(user.channel.subscribers)} / 300</span>
+                            </div>
+                            <Progress value={(user.channel.subscribers / 300) * 100} className="h-2"/>
+                            <p className="text-xs text-muted-foreground">300 subscribers required.</p>
+                        </div>
+                         <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium">
+                                <span>Public watch hours (longs)</span>
+                                <span>{totalWatchTime.toFixed(1)} / 500</span>
+                            </div>
+                            <Progress value={(totalWatchTime / 500) * 100} className="h-2"/>
+                            <p className="text-xs text-muted-foreground">500 valid public watch hours required. This is an estimate based on views and video duration.</p>
+                        </div>
+                    </CardContent>
                 </Card>
 
                 <ViewsChart />
@@ -227,10 +251,21 @@ export default function StudioPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Latest Video Performance</CardTitle>
-                      <CardDescription>Stats for your newest video.</CardDescription>
+                      <CardDescription>Stats for your newest upload.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <VideoCard video={latestVideo} />
+                      <div className="p-2 rounded-lg bg-secondary border">
+                        <div className="flex items-center gap-4">
+                          <img src={latestVideo.thumbnailUrl} alt={latestVideo.title} className="w-24 aspect-video rounded-md object-cover" />
+                          <div className="flex-1">
+                            <p className="font-semibold line-clamp-2">{latestVideo.title}</p>
+                            <div className="flex gap-4 text-sm text-muted-foreground mt-2">
+                              <span className="flex items-center gap-1"><Eye className="w-4 h-4"/> {formatViews(latestVideo.views)}</span>
+                              <span className="flex items-center gap-1"><ThumbsUp className="w-4 h-4"/> {formatViews(latestVideo.likes)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                        <div className="flex gap-2 mt-4">
                             <Button variant="outline" size="sm" className="w-full" onClick={() => handleEditClick(latestVideo)}><Edit className="w-4 h-4 mr-2"/> Edit</Button>
                             <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteClick(latestVideo)}><Trash2 className="w-4 h-4 mr-2"/> Delete</Button>
@@ -250,7 +285,17 @@ export default function StudioPage() {
                     <div className="space-y-4">
                       {videos.map(video => (
                         <div key={video.id} className="p-2 rounded-lg bg-card border">
-                          <VideoCard video={video} />
+                          <div className="flex items-center gap-4">
+                            <img src={video.thumbnailUrl} alt={video.title} className="w-24 aspect-video rounded-md object-cover" />
+                            <div className="flex-1">
+                                <p className="font-semibold line-clamp-2">{video.title}</p>
+                                <p className="text-xs text-muted-foreground">{new Date(video.createdAt).toLocaleDateString()}</p>
+                                <div className="flex gap-4 text-sm text-muted-foreground mt-2">
+                                <span className="flex items-center gap-1"><Eye className="w-4 h-4"/> {formatViews(video.views)}</span>
+                                <span className="flex items-center gap-1"><ThumbsUp className="w-4 h-4"/> {formatViews(video.likes)}</span>
+                                </div>
+                            </div>
+                          </div>
                           <div className="flex gap-2 mt-2">
                               <Button variant="outline" size="sm" className="w-full" onClick={() => handleEditClick(video)}><Edit className="w-4 h-4 mr-2"/> Edit</Button>
                               <Button variant="destructive" size="sm" className="w-full" onClick={() => handleDeleteClick(video)}><Trash2 className="w-4 h-4 mr-2"/> Delete</Button>

@@ -16,20 +16,20 @@ interface ShortCardProps {
   isIntersecting: boolean;
   isMuted: boolean;
   setIsMuted: (isMuted: boolean) => void;
+  hasInteracted: boolean;
+  setHasInteracted: (hasInteracted: boolean) => void;
 }
 
-function ShortCard({ short, isIntersecting, isMuted, setIsMuted }: ShortCardProps) {
+function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, setHasInteracted }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hasBeenTapped, setHasBeenTapped] = useState(false);
 
   useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
     if (isIntersecting) {
-      // Start playing muted when it comes into view
-      videoElement.muted = isMuted && !hasBeenTapped;
+      videoElement.muted = !hasInteracted;
       videoElement.play().then(() => setIsPlaying(true)).catch(error => {
         console.error("Video play failed:", error);
         setIsPlaying(false);
@@ -41,7 +41,7 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted }: ShortCardProp
         videoElement.currentTime = 0;
       }
     }
-  }, [isIntersecting, isMuted, hasBeenTapped]);
+  }, [isIntersecting, hasInteracted]);
   
   useEffect(() => {
     if (videoRef.current) {
@@ -49,7 +49,11 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted }: ShortCardProp
     }
   }, [isMuted]);
 
-  const togglePlay = () => {
+  const handleVideoPress = () => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+      setIsMuted(false);
+    }
     const videoElement = videoRef.current;
     if (!videoElement) return;
     if (videoElement.paused) {
@@ -59,25 +63,11 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted }: ShortCardProp
     }
   };
 
-  const handleVideoPress = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!hasBeenTapped) {
-      setHasBeenTapped(true);
-      if (isMuted) {
-        setIsMuted(false);
-      }
-    }
-    togglePlay();
-  };
-
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setHasInteracted(true);
     setIsMuted(!isMuted);
-    if (!isMuted) {
-      setHasBeenTapped(true); // If user manually mutes, we consider it an interaction
-    }
   };
-
 
   if (!short.channel) return null;
 
@@ -107,15 +97,15 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted }: ShortCardProp
         </button>
       </div>
       
-      <div className="absolute bottom-4 left-4 text-white pointer-events-none">
-        <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2 group pointer-events-auto" onClick={e => e.stopPropagation()}>
+      <div className="absolute bottom-4 left-4 text-white">
+        <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2 group" onClick={e => e.stopPropagation()}>
           <Avatar className="h-10 w-10 border-2 border-white">
             <AvatarImage src={short.channel.photoURL} />
             <AvatarFallback>{short.channel.handle[0]}</AvatarFallback>
           </Avatar>
           <span className="font-semibold group-hover:underline">@{short.channel.handle}</span>
         </Link>
-        <p className="mt-2 text-sm">{short.title}</p>
+        <p className="mt-2 text-sm pointer-events-none">{short.title}</p>
       </div>
       
       <div className="absolute bottom-4 right-2 flex flex-col items-center gap-4 text-white">
@@ -142,6 +132,7 @@ export function ShortsPlayer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleShortId, setVisibleShortId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [hasInteracted, setHasInteracted] = useState(false); // Global interaction state for the player
 
   useEffect(() => {
     const fetchShorts = async () => {
@@ -230,7 +221,6 @@ export function ShortsPlayer() {
         element?.scrollIntoView();
     }
 
-
     return () => {
       shortsElements?.forEach((el) => observer.unobserve(el));
     };
@@ -256,11 +246,11 @@ export function ShortsPlayer() {
               isIntersecting={visibleShortId === short.id}
               isMuted={isMuted}
               setIsMuted={setIsMuted}
+              hasInteracted={hasInteracted}
+              setHasInteracted={setHasInteracted}
             />
         </div>
       ))}
     </div>
   );
 }
-
-    
