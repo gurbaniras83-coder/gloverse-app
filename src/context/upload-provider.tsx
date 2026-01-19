@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
+import React, { createContext, useState, useContext, ReactNode } from "react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./auth-provider";
@@ -45,14 +45,6 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
   const [fileName, setFileName] = useState("");
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   
-  useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-      }
-    }
-  }, []);
-  
   const uploadToCloudinary = (file: File, url: string, onProgress: (event: ProgressEvent) => void): Promise<any> => {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -76,6 +68,10 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+        if (url.includes('/video/')) {
+          formData.append('resource_type', 'video');
+        }
         
         xhr.send(formData);
     });
@@ -96,20 +92,13 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
     setFileName(metadata.title);
     setThumbnailPreview(URL.createObjectURL(thumbnailFile));
     
-    if ('Notification' in window && Notification.permission === "granted") {
-        new Notification("GloVerse: Uploading...", {
-            body: `Your video '${metadata.title}' is now uploading.`,
-            icon: '/logo.png'
-        });
-    } else {
-      toast({ title: "Upload Started", description: `Your video '${metadata.title}' is now uploading.` });
-    }
+    toast({ title: "Upload Started", description: `Your video '${metadata.title}' is now uploading.` });
 
     try {
       const videoResponse = await uploadToCloudinary(videoFile, CLOUDINARY_VIDEO_URL, (event) => {
          if (event.lengthComputable) {
             setUploadProgress({
-                percentage: (event.loaded / event.total) * 100,
+                percentage: Math.round((event.loaded / event.total) * 100),
                 transferred: event.loaded,
                 total: event.total,
             });
@@ -140,23 +129,12 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
         duration: actualDuration,
       });
 
-      if ('Notification' in window && Notification.permission === "granted") {
-        new Notification("GloVerse: Upload Complete!", {
-          body: `'${metadata.title}' has been published.`,
-          icon: thumbnailURL
-        });
-      } else {
-        toast({ title: "Success", description: "Your video has been published!" });
-      }
+      toast({ title: "Success", description: "Your video has been published!" });
       resetState();
     } catch (error: any) {
       console.error("Upload failed", error);
       const errorMessage = error.message || "An unknown error occurred during upload.";
-      if ('Notification' in window && Notification.permission === "granted") {
-        new Notification("GloVerse: Upload Failed", { body: `Could not upload '${metadata.title}'. Reason: ${errorMessage}` });
-      } else {
-        toast({ variant: "destructive", title: "Upload Failed", description: errorMessage });
-      }
+      toast({ variant: "destructive", title: "Upload Failed", description: errorMessage });
       resetState();
     }
   };
