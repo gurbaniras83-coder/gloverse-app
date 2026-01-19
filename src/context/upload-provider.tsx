@@ -64,9 +64,9 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
     setThumbnailPreview(URL.createObjectURL(thumbnailFile));
     
     if (Notification.permission === "granted") {
-        new Notification("Upload Started", {
+        new Notification("GloVerse: Uploading...", {
             body: `Your video '${metadata.title}' is now uploading.`,
-            icon: URL.createObjectURL(thumbnailFile)
+            icon: '/logo.png'
         });
     }
 
@@ -93,7 +93,7 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
           console.error("Upload failed", error);
           toast({ variant: "destructive", title: "Upload Failed", description: error.message });
           if (Notification.permission === "granted") {
-            new Notification("Upload Failed", { body: `Could not upload '${metadata.title}'.` });
+            new Notification("GloVerse: Upload Failed", { body: `Could not upload '${metadata.title}'. Reason: ${error.code}` });
           }
           resetState();
         },
@@ -127,7 +127,7 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
 
               toast({ title: "Success", description: "Your video has been published!" });
               if (Notification.permission === "granted") {
-                new Notification("Upload Complete!", {
+                new Notification("GloVerse: Upload Complete!", {
                   body: `'${metadata.title}' has been published.`,
                   icon: thumbnailURL
                 });
@@ -141,7 +141,7 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
       console.error("Upload failed", error);
       toast({ variant: "destructive", title: "Upload Failed", description: error.message });
       if (Notification.permission === "granted") {
-        new Notification("Upload Failed", { body: `Could not upload '${metadata.title}'.` });
+        new Notification("GloVerse: Upload Failed", { body: `Could not upload '${metadata.title}'.` });
       }
       resetState();
     }
