@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,24 +19,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Video, Image as ImageIcon, UploadCloud, ChevronLeft, Globe, Lock, Users, ShieldAlert, X } from "lucide-react";
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
+import { UploadCloud, ChevronLeft, Globe, Lock, Users, ShieldAlert, ImageIcon } from "lucide-react";
 import NextImage from "next/image";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useUpload } from "@/context/upload-provider";
 
+// Schema without file instances, as we handle files separately
 const uploadSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().max(5000).optional(),
-  videoFile: z.instanceof(File).refine(file => file.size > 0, 'Video file is required.'),
-  thumbnailFile: z.instanceof(File).optional(),
   visibility: z.enum(["public", "private"]).default("public"),
   audience: z.enum(["kids", "none"]).default("none"),
 });
@@ -46,18 +38,18 @@ type UploadFormValues = z.infer<typeof uploadSchema>;
 export default function UploadPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ percentage: 0, transferred: 0, total: 0 });
+  const { startUpload, isUploading } = useUpload();
+
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
-
-  const isShort = searchParams.get('type') === 'short';
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
@@ -71,17 +63,17 @@ export default function UploadPage() {
 
   useEffect(() => {
     // Trigger file input if no video is selected and not uploading
-    if (!form.getValues("videoFile") && !isUploading) {
+    if (!videoFile && !isUploading) {
       videoInputRef.current?.click();
     }
-  }, [form, isUploading]);
-
+  }, [videoFile, isUploading]);
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'video' | 'thumbnail') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (fileType === 'video') {
-      form.setValue("videoFile", file);
+      setVideoFile(file);
       const videoUrl = URL.createObjectURL(file);
       setVideoPreview(videoUrl);
 
@@ -99,119 +91,47 @@ export default function UploadPage() {
         canvas.width = videoElement.videoWidth;
         canvas.height = videoElement.videoHeight;
         canvas.getContext("2d")?.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-        const thumbnailUrl = canvas.toDataURL("image/jpeg");
-        setThumbnailPreview(thumbnailUrl);
+        const autoThumbnailUrl = canvas.toDataURL("image/jpeg");
+        setThumbnailPreview(autoThumbnailUrl);
         canvas.toBlob(blob => {
           if (blob) {
-            form.setValue("thumbnailFile", new File([blob], "thumbnail.jpg", { type: "image/jpeg" }));
+            setThumbnailFile(new File([blob], "thumbnail.jpg", { type: "image/jpeg" }));
           }
         }, "image/jpeg");
       };
     } else {
-      form.setValue("thumbnailFile", file);
+      setThumbnailFile(file);
       setThumbnailPreview(URL.createObjectURL(file));
     }
   };
-  
-  const formatBytes = (bytes: number, decimals = 2) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-  }
 
   const onSubmit = async (data: UploadFormValues) => {
-    if (!user || !user.channel || !data.videoFile) {
+    if (!user || !user.channel || !videoFile) {
       toast({ variant: "destructive", title: "Error", description: "You must be logged in and select a video to upload." });
       return;
     }
+
+    const finalThumbnailFile = thumbnailFile; // Use the explicitly set one or the auto-generated one
+    if (!finalThumbnailFile) {
+      toast({ variant: "destructive", title: "Error", description: "A thumbnail is required." });
+      return;
+    }
     
-    setIsUploading(true);
-    setUploadProgress({ percentage: 0, transferred: 0, total: 0 });
-
-    const uploadFile = (file: File, path: string) => {
-      const storageRef = ref(storage, path);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      return new Promise<string>((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            setUploadProgress({
-              percentage: (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
-              transferred: snapshot.bytesTransferred,
-              total: snapshot.totalBytes,
-            });
-          },
-          (error) => reject(error),
-          () => getDownloadURL(uploadTask.snapshot.ref).then(resolve)
-        );
-      });
-    };
-
-    try {
-      const videoFileName = `${user.uid}/${Date.now()}-${data.videoFile.name}`;
-      const videoURL = await uploadFile(data.videoFile, `videos/${videoFileName}`);
-      
-      let thumbnailURL = "";
-      // Use the generated thumbnail if the user hasn't selected a custom one.
-      const thumbFile = form.getValues("thumbnailFile");
-      if (thumbFile) {
-        const thumbnailFileName = `${user.uid}/${Date.now()}-thumbnail.jpg`;
-        thumbnailURL = await uploadFile(thumbFile, `thumbnails/${thumbnailFileName}`);
-      } else if (thumbnailPreview) {
-        // This case handles the auto-generated thumbnail
-        const blob = await (await fetch(thumbnailPreview)).blob();
-        const thumbnailFile = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
-        const thumbnailFileName = `${user.uid}/${Date.now()}-autothumb.jpg`;
-        thumbnailURL = await uploadFile(thumbnailFile, `thumbnails/${thumbnailFileName}`);
-      }
-      
-      const videoType = videoDuration < 60 ? 'short' : 'long';
-
-      await addDoc(collection(db, "videos"), {
-        uid: user.uid,
-        channelId: user.channel.id,
-        title: data.title,
-        description: data.description,
-        videoUrl: videoURL,
-        thumbnailUrl: thumbnailURL,
-        type: videoType,
-        visibility: data.visibility,
-        audience: data.audience,
-        views: 0,
-        likes: 0,
-        createdAt: serverTimestamp(),
-        duration: videoDuration,
-      });
-
-      toast({ title: "Success", description: "Your video has been published!" });
-      // Show native notification if permission is granted
-      if (Notification.permission === "granted") {
-        new Notification("Upload Complete!", {
-          body: `'${data.title}' has been published.`,
-          icon: thumbnailURL || '/favicon.ico'
-        });
-      }
-
-      router.push(`/@${user.channel.handle}`);
-    } catch (error: any) {
-      console.error("Upload failed", error);
-      toast({ variant: "destructive", title: "Upload Failed", description: error.message });
-      setIsUploading(false);
-    }
+    // Start the global upload process
+    await startUpload(videoFile, finalThumbnailFile, data, videoDuration);
+    
+    // The provider now handles notifications and redirects.
+    // We can clear the form here.
+    form.reset();
+    setVideoFile(null);
+    setThumbnailFile(null);
+    setVideoPreview(null);
+    setThumbnailPreview(null);
+    setVideoDuration(0);
+    // Optional: redirect from here or let the provider do it.
+    // Let's redirect to studio to see the new video.
+    router.push('/studio');
   };
-
-  // Request notification permission on component mount
-  useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
-      }
-    }
-  }, []);
 
   return (
     <>
@@ -220,7 +140,7 @@ export default function UploadPage() {
               <Button variant="ghost" size="icon" onClick={() => router.back()}>
                   <ChevronLeft className="w-6 h-6" />
               </Button>
-              <h1 className="text-xl font-bold font-headline">{isShort ? "Create a Short" : "Upload Video"}</h1>
+              <h1 className="text-xl font-bold font-headline">Upload Video</h1>
               <div className="w-10"></div>
           </div>
           
@@ -336,38 +256,6 @@ export default function UploadPage() {
             </form>
           </Form>
       </div>
-
-       {isUploading && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 max-w-[500px] mx-auto">
-            <div className="bg-secondary rounded-lg shadow-2xl p-4 border border-border">
-                <div className="flex items-start gap-4">
-                    {thumbnailPreview ? (
-                        <div className="relative w-16 h-10 rounded-md overflow-hidden flex-shrink-0">
-                           <NextImage src={thumbnailPreview} alt="uploading thumbnail" layout="fill" className="object-cover" />
-                        </div>
-                    ) : (
-                        <div className="w-16 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                            <Video className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                       <p className="text-sm font-semibold truncate">Uploading your video...</p>
-                       <p className="text-xs text-muted-foreground truncate">{form.getValues('title') || '...'}</p>
-                       <Progress value={uploadProgress.percentage} className="w-full mt-2 h-2" />
-                       <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                           <span>{Math.round(uploadProgress.percentage)}%</span>
-                           <span>{formatBytes(uploadProgress.transferred)} / {formatBytes(uploadProgress.total)}</span>
-                       </div>
-                    </div>
-                     <Button variant="ghost" size="icon" className="flex-shrink-0 -mt-2 -mr-2" onClick={() => { /* In a real app, this would cancel the upload */ setIsUploading(false); }}>
-                        <X className="w-4 h-4"/>
-                    </Button>
-                </div>
-            </div>
-        </div>
-      )}
     </>
   );
 }
-
-    

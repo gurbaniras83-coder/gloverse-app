@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-provider";
+import { UploadProvider } from "@/context/upload-provider";
+import UploadProgressIndicator from "@/components/upload-progress-indicator";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,8 +37,11 @@ export default function RootLayout({
         className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased`}
       >
         <AuthProvider>
-          {children}
-          <Toaster />
+          <UploadProvider>
+            {children}
+            <Toaster />
+            <UploadProgressIndicator />
+          </UploadProvider>
         </AuthProvider>
       </body>
     </html>
