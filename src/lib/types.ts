@@ -29,7 +29,7 @@ export type Video = {
   description: string;
   type: 'long' | 'short';
   visibility: 'public' | 'private';
-  likes?: number;
+  likes: number;
 };
 
 export type Comment = {
@@ -37,6 +37,7 @@ export type Comment = {
   user: {
     name: string;
     avatar: string;
+    uid: string;
   },
   text: string;
   timestamp: Date;

@@ -7,16 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-provider";
 import { Comment } from "@/lib/types";
-import { mockComments } from "@/lib/mock-data";
 import { Send, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+import Link from "next/link";
 
 export function CommentSection({ videoId }: { videoId: string }) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
     if (!videoId) return;
@@ -38,8 +39,6 @@ export function CommentSection({ videoId }: { videoId: string }) {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching comments: ", error);
-      // Fallback to mock comments on error
-      setComments(mockComments);
       setLoading(false);
     });
 
@@ -48,13 +47,15 @@ export function CommentSection({ videoId }: { videoId: string }) {
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !user?.channel || !videoId) return;
+    if (!newComment.trim() || !user?.channel || !videoId || isPosting) return;
 
+    setIsPosting(true);
     try {
       await addDoc(collection(db, "videos", videoId, "comments"), {
         user: {
           name: user.channel.handle,
           avatar: user.channel.photoURL,
+          uid: user.uid,
         },
         text: newComment,
         timestamp: serverTimestamp(),
@@ -62,6 +63,8 @@ export function CommentSection({ videoId }: { videoId: string }) {
       setNewComment("");
     } catch (error) {
       console.error("Error posting comment: ", error);
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -81,8 +84,8 @@ export function CommentSection({ videoId }: { videoId: string }) {
             placeholder="Add a comment..."
             className="h-9"
           />
-          <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0" disabled={!newComment.trim()}>
-            <Send className="h-4 w-4" />
+          <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0" disabled={!newComment.trim() || isPosting}>
+            {isPosting ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
           </Button>
         </form>
       )}
@@ -95,13 +98,15 @@ export function CommentSection({ videoId }: { videoId: string }) {
         <div className="space-y-6">
           {comments.map((comment) => (
             <div key={comment.id} className="flex items-start gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={comment.user.avatar} />
-                <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
+              <Link href={`/@${comment.user.name}`}>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={comment.user.avatar} />
+                  <AvatarFallback>{comment.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Link>
               <div className="flex-1">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-semibold">@{comment.user.name}</span>
+                  <Link href={`/@${comment.user.name}`} className="font-semibold">@{comment.user.name}</Link>
                   <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(comment.timestamp, { addSuffix: true })}
                   </span>

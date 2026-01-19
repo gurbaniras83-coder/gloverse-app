@@ -6,7 +6,7 @@ import { formatViews, cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, Bell, ArrowDownToLine } from "lucide-react";
+import { ThumbsUp, Bell } from "lucide-react";
 import Link from "next/link";
 import { VideoCard } from "@/components/video-card";
 import { CommentSection } from "@/components/comment-section";
@@ -29,6 +29,7 @@ function WatchPageContent() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
 
   const fetchVideoData = useCallback(async () => {
     if (!videoId) return;
@@ -53,7 +54,9 @@ function WatchPageContent() {
       }
       
       setVideo(videoData);
+      setLikeCount(videoData.likes || 0);
 
+      // Unique view count logic
       const viewedVideos = JSON.parse(localStorage.getItem('viewedVideos') || '[]');
       if (!viewedVideos.includes(videoId)) {
           await updateDoc(videoRef, { views: increment(1) });
@@ -124,14 +127,21 @@ function WatchPageContent() {
     };
     setIsInteracting(true);
     const likeRef = doc(db, "videos", video.id, "likes", user.uid);
+    const videoRef = doc(db, "videos", video.id);
+
     try {
       if (isLiked) {
         await deleteDoc(likeRef);
+        await updateDoc(videoRef, { likes: increment(-1) });
+        setLikeCount(prev => prev - 1);
       } else {
         await setDoc(likeRef, { likedAt: new Date() });
+        await updateDoc(videoRef, { likes: increment(1) });
+        setLikeCount(prev => prev + 1);
       }
       setIsLiked(!isLiked);
     } catch (error) {
+      console.error("Like error:", error);
       toast({ variant: 'destructive', title: 'Error updating like status.' });
     } finally {
       setIsInteracting(false);
@@ -153,15 +163,16 @@ function WatchPageContent() {
         if (isSubscribed) {
             batch.delete(subRef);
             batch.update(channelRef, { subscribers: increment(-1) });
-            if (video.channel) video.channel.subscribers--;
+            if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: v.channel!.subscribers -1 } } : null);
         } else {
             batch.set(subRef, { subscribedAt: new Date() });
             batch.update(channelRef, { subscribers: increment(1) });
-            if (video.channel) video.channel.subscribers++;
+            if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: v.channel!.subscribers + 1 } } : null);
         }
         await batch.commit();
         setIsSubscribed(!isSubscribed);
     } catch (error) {
+        console.error("Subscription error:", error);
         toast({ variant: 'destructive', title: 'Error updating subscription.' });
     } finally {
         setIsInteracting(false);
@@ -177,7 +188,7 @@ function WatchPageContent() {
   return (
     <div className="flex flex-col">
       <div className="sticky top-0 z-10 aspect-video w-full bg-black">
-        <video src={video.videoUrl} controls autoPlay className="h-full w-full" controlsList="nodownload" />
+        <video src={video.videoUrl} controls autoPlay className="h-full w-full" />
       </div>
 
       <div className="p-4 space-y-4">
@@ -220,11 +231,7 @@ function WatchPageContent() {
             disabled={!user || isInteracting}
           >
             <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-primary text-primary")} />
-            Like
-          </Button>
-          <Button variant="secondary" className="rounded-full flex-shrink-0">
-            <ArrowDownToLine className="mr-2 h-5 w-5" />
-            Download
+            {formatViews(likeCount)}
           </Button>
         </div>
         

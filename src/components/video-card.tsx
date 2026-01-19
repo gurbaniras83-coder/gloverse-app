@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Video } from "@/lib/types";
 import { formatViews } from "@/lib/utils";
 import React from "react";
+import { Skeleton } from "./ui/skeleton";
 
 type VideoCardProps = {
   video: Video;
@@ -14,6 +15,22 @@ type VideoCardProps = {
 
 export function VideoCard({ video }: VideoCardProps) {
   const router = useRouter();
+  
+  if (!video || !video.channel) {
+      return (
+           <div className="space-y-3">
+                <Skeleton className="w-full aspect-video rounded-xl" />
+                <div className="flex items-start space-x-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-2/3" />
+                    </div>
+                </div>
+            </div>
+      )
+  }
+
   const timeAgo = formatDistanceToNow(video.createdAt, { addSuffix: true });
 
   const handleCardClick = () => {

@@ -19,7 +19,7 @@ interface ShortCardProps {
 function ShortCard({ short, isIntersecting }: ShortCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Start muted
 
   useEffect(() => {
     if (isIntersecting) {
@@ -82,7 +82,7 @@ function ShortCard({ short, isIntersecting }: ShortCardProps) {
             <AvatarImage src={short.channel.photoURL} />
             <AvatarFallback>{short.channel.handle[0]}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold">{short.channel.handle}</span>
+          <span className="font-semibold">@{short.channel.handle}</span>
         </Link>
         <p className="mt-2 text-sm">{short.title}</p>
       </div>
@@ -109,7 +109,7 @@ function ShortCard({ short, isIntersecting }: ShortCardProps) {
 }
 
 export function ShortsPlayer() {
-  const [shorts, setShorts] = useState<Video[]>(mockShorts);
+  const [shorts, setShorts] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleShortId, setVisibleShortId] = useState<string | null>(null);
@@ -158,6 +158,7 @@ export function ShortsPlayer() {
   useEffect(() => {
     if (loading || shorts.length === 0) return;
     
+    // Set the first short as visible initially
     setVisibleShortId(shorts[0].id);
 
     const observer = new IntersectionObserver(
