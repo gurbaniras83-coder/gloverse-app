@@ -11,10 +11,8 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Video } from "@/lib/types";
 import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
-import { ref, deleteObject } from "firebase/storage";
+import { db } from "@/lib/firebase";
 import { formatViews } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -168,24 +166,8 @@ export default function StudioPage() {
       // Delete Firestore document
       await deleteDoc(doc(db, "videos", selectedVideo.id));
       
-      // Delete files from Storage
-      const deleteFileFromURL = async (url: string) => {
-        if(!url || !url.includes('firebasestorage')) return; // Not a storage URL
-        try {
-          const filePath = decodeURIComponent(url.split('/o/')[1].split('?')[0]);
-          const fileRef = ref(storage, filePath);
-          await deleteObject(fileRef);
-        } catch (storageError: any) {
-          if(storageError.code !== 'storage/object-not-found') {
-            console.error("Could not delete file from storage: ", storageError);
-            // Non-critical, so we don't re-throw. Just log it.
-          }
-        }
-      }
-      await deleteFileFromURL(selectedVideo.videoUrl);
-      if (selectedVideo.thumbnailUrl) {
-        await deleteFileFromURL(selectedVideo.thumbnailUrl);
-      }
+      // Note: Deleting files from Cloudinary requires a signed API request from a backend.
+      // We will only delete the Firestore record for now.
 
       setVideos(prev => prev.filter(v => v.id !== selectedVideo.id));
       toast({ title: "Video deleted successfully" });
@@ -328,8 +310,8 @@ export default function StudioPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your video
-              and all its data from our servers.
+              This action cannot be undone. This will permanently delete your video's
+              data from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -344,5 +326,3 @@ export default function StudioPage() {
     </>
   );
 }
-
-    

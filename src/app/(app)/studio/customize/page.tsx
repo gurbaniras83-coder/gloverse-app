@@ -21,13 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UploadCloud, ChevronLeft } from "lucide-react";
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
 import { doc, updateDoc } from "firebase/firestore";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import NextImage from "next/image";
 import { checkHandleUniqueness } from "@/lib/actions";
 import { debounce } from "lodash";
@@ -43,6 +38,10 @@ const customizeSchema = z.object({
 });
 
 type CustomizeFormValues = z.infer<typeof customizeSchema>;
+
+const CLOUDINARY_CLOUD_NAME = "doabiexyv";
+const CLOUDINARY_UPLOAD_PRESET = "gloverse_upload";
+const CLOUDINARY_IMAGE_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 export default function CustomizeChannelPage() {
   const { user, loading } = useAuth();
@@ -118,6 +117,28 @@ export default function CustomizeChannelPage() {
     }
     reader.readAsDataURL(file);
   }
+  
+  const uploadToCloudinary = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      fetch(CLOUDINARY_IMAGE_URL, {
+        method: "POST",
+        body: formData,
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.secure_url) {
+          resolve(data.secure_url);
+        } else {
+          reject(new Error("Cloudinary upload failed"));
+        }
+      })
+      .catch(error => reject(error));
+    });
+  };
 
   const onSubmit = async (data: CustomizeFormValues) => {
     if (!user || !user.channel || handleStatus === 'taken') {
@@ -132,32 +153,14 @@ export default function CustomizeChannelPage() {
       let photoURL = user.channel.photoURL;
       let bannerUrl = user.channel.bannerUrl;
 
-      const uploadFile = (file: File, path: string) => {
-        const storageRef = ref(storage, path);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        return new Promise<string>((resolve, reject) => {
-          uploadTask.on(
-            "state_changed",
-            () => {},
-            (error) => {
-                console.error("Upload Error:", error);
-                reject(new Error(`Failed to upload ${file.name}.`));
-            },
-            () => getDownloadURL(uploadTask.snapshot.ref).then(resolve)
-          );
-        });
-      };
-      
       if (avatarFile) {
         toast({ title: "Uploading avatar..." });
-        const avatarPath = `avatars/${user.uid}/${Date.now()}_${avatarFile.name}`;
-        photoURL = await uploadFile(avatarFile, avatarPath);
+        photoURL = await uploadToCloudinary(avatarFile);
       }
 
       if (bannerFile) {
         toast({ title: "Uploading banner..." });
-        const bannerPath = `banners/${user.uid}/${Date.now()}_${bannerFile.name}`;
-        bannerUrl = await uploadFile(bannerFile, bannerPath);
+        bannerUrl = await uploadToCloudinary(bannerFile);
       }
       
       const channelRef = doc(db, "channels", user.channel.id);
@@ -288,5 +291,3 @@ export default function CustomizeChannelPage() {
     </div>
   );
 }
-
-    

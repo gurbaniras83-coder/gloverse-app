@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { 
   getAuth, 
   browserLocalPersistence, 
@@ -36,6 +35,5 @@ if (typeof window !== 'undefined') {
 }
 
 const db: Firestore = getFirestore(app);
-const storage: FirebaseStorage = getStorage(app);
 
-export { app, auth, db, storage };
+export { app, auth, db };

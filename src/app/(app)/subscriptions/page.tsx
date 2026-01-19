@@ -4,18 +4,19 @@ import { Clapperboard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { VideoCard } from "@/components/video-card";
-import { mockVideos } from "@/lib/mock-data";
 import { useAuth } from "@/context/auth-provider";
 import { useState, useEffect } from "react";
-import type { Video } from "@/lib/types";
+import type { Video, Channel } from "@/lib/types";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 
 export default function SubscriptionsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
 
     if (!user) {
       setIsLoading(false);
@@ -23,28 +24,54 @@ export default function SubscriptionsPage() {
       return;
     }
 
-    // In a real app, you would fetch the user's subscription list from Firestore,
-    // then fetch the videos for those channels.
-    // For this example, we'll simulate it with mock data.
     const fetchSubscribedVideos = async () => {
       setIsLoading(true);
-      // Simulating a network request
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // We'll assume the user is subscribed to the first two mock channels.
-      const subscribedChannelIds = [mockVideos[0].channel.id, mockVideos[1].channel.id];
-      const subscribedVideos = mockVideos.filter(video => 
-        subscribedChannelIds.includes(video.channel.id) && video.type === 'long'
-      );
-      
-      setVideos(subscribedVideos);
-      setIsLoading(false);
+      try {
+        // 1. Get user's subscriptions
+        const subsRef = collection(db, "users", user.uid, "subscriptions");
+        const subsSnapshot = await getDocs(subsRef);
+        const subscribedChannelIds = subsSnapshot.docs.map(doc => doc.id);
+
+        if (subscribedChannelIds.length === 0) {
+          setVideos([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2. Fetch videos from subscribed channels
+        // Firestore 'in' query is limited to 30 items. For a larger scale app, this would need a different data model (e.g., a "feed" collection for each user).
+        const videosQuery = query(collection(db, "videos"), where("channelId", "in", subscribedChannelIds), where("visibility", "==", "public"));
+        const videosSnapshot = await getDocs(videosQuery);
+        
+        const fetchedVideos = await Promise.all(videosSnapshot.docs.map(async (videoDoc) => {
+            const videoData = videoDoc.data();
+            const channelRef = doc(db, "channels", videoData.channelId);
+            const channelSnap = await getDoc(channelRef);
+            const channelData = channelSnap.exists() ? { ...channelSnap.data(), id: channelSnap.id } as Channel : null;
+
+            return {
+                id: videoDoc.id,
+                ...videoData,
+                createdAt: videoData.createdAt.toDate(),
+                channel: channelData,
+            } as Video;
+        }));
+
+        const sortedVideos = fetchedVideos.filter(v => v.channel).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        setVideos(sortedVideos);
+
+      } catch (error) {
+        console.error("Error fetching subscribed videos:", error);
+        setVideos([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchSubscribedVideos();
-  }, [user, loading]);
+  }, [user, authLoading]);
 
-  if (isLoading || loading) {
+  if (isLoading || authLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
