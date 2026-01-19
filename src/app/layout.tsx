@@ -1,9 +1,12 @@
-import type { Metadata, Viewport } from "next";
+"use client";
+
+import { useState, useEffect } from "react";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-provider";
 import { UploadProvider } from "@/context/upload-provider";
 import UploadProgressIndicator from "@/components/upload-progress-indicator";
+import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
 
 const inter = Inter({
@@ -16,33 +19,56 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
 });
 
-export const metadata: Metadata = {
-  title: "Gloverse",
-  description: "A professional YouTube mobile clone.",
-  manifest: "/manifest.json",
-};
-
-export const viewport: Viewport = {
-  themeColor: "#0F0F0F",
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    // This check ensures the splash screen is only shown once per session.
+    if (sessionStorage.getItem("splashShown")) {
+      setShowSplash(false);
+    } else {
+        setShowSplash(true);
+    }
+  }, []);
+
+  const handleSplashFinish = () => {
+    sessionStorage.setItem("splashShown", "true");
+    setShowSplash(false);
+  };
+  
+  // This prevents a flash of the splash screen on server render if it's already been shown.
+  if (typeof window !== "undefined" && sessionStorage.getItem("splashShown")) {
+    if (showSplash) {
+        setShowSplash(false);
+    }
+  }
+
   return (
     <html lang="en" className="dark">
+      <head>
+        <title>Gloverse</title>
+        <meta name="description" content="A professional YouTube mobile clone." />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0f0f0f" />
+      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased`}
       >
-        <AuthProvider>
-          <UploadProvider>
-            {children}
-            <Toaster />
-            <UploadProgressIndicator />
-          </UploadProvider>
-        </AuthProvider>
+        {showSplash ? (
+          <SplashScreen onFinished={handleSplashFinish} />
+        ) : (
+          <AuthProvider>
+            <UploadProvider>
+              {children}
+              <Toaster />
+              <UploadProgressIndicator />
+            </UploadProvider>
+          </AuthProvider>
+        )}
       </body>
     </html>
   );

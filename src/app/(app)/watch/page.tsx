@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Suspense, useState, useEffect, useCallback } from "react";
@@ -18,6 +17,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, increment, writeBatch, setDoc, deleteDoc, limit } from "firebase/firestore";
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
+import { CustomVideoPlayer } from "@/components/custom-video-player";
 
 function WatchPageContent() {
   const searchParams = useSearchParams();
@@ -61,11 +61,14 @@ function WatchPageContent() {
       setLikeCount(videoData.likes || 0);
 
       // Unique view count logic
-      const viewedVideos = JSON.parse(localStorage.getItem('viewedVideos') || '[]');
+      const viewedVideosKey = 'viewedVideos';
+      const viewedVideos = JSON.parse(localStorage.getItem(viewedVideosKey) || '[]');
       if (!viewedVideos.includes(videoId)) {
           await updateDoc(videoRef, { views: increment(1) });
+          // Add to local storage for this session
           viewedVideos.push(videoId);
-          localStorage.setItem('viewedVideos', JSON.stringify(viewedVideos));
+          localStorage.setItem(viewedVideosKey, JSON.stringify(viewedVideos));
+          // Update state to reflect new view count immediately
           setVideo(v => v ? { ...v, views: (v.views || 0) + 1 } : null);
       }
     } catch(e) {
@@ -139,13 +142,15 @@ function WatchPageContent() {
     const videoRef = doc(db, "videos", video.id);
 
     try {
-      const isCurrentlyLiked = (await getDoc(likeRef)).exists();
-      if (isCurrentlyLiked) {
+      const likeSnap = await getDoc(likeRef);
+      if (likeSnap.exists()) {
+        // Unlike
         await deleteDoc(likeRef);
         await updateDoc(videoRef, { likes: increment(-1) });
         setLikeCount(prev => Math.max(0, prev - 1));
         setIsLiked(false);
       } else {
+        // Like
         await setDoc(likeRef, { likedAt: new Date() });
         await updateDoc(videoRef, { likes: increment(1) });
         setLikeCount(prev => prev + 1);
@@ -170,14 +175,16 @@ function WatchPageContent() {
     const channelRef = doc(db, "channels", video.channel.id);
     
     try {
-        const isCurrentlySubscribed = (await getDoc(subRef)).exists();
+        const subSnap = await getDoc(subRef);
         const batch = writeBatch(db);
-        if (isCurrentlySubscribed) {
+        if (subSnap.exists()) {
+            // Unsubscribe
             batch.delete(subRef);
             batch.update(channelRef, { subscribers: increment(-1) });
             if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: Math.max(0, v.channel!.subscribers -1) } } : null);
             setIsSubscribed(false);
         } else {
+            // Subscribe
             batch.set(subRef, { subscribedAt: new Date() });
             batch.update(channelRef, { subscribers: increment(1) });
             if (video.channel) setVideo(v => v ? { ...v, channel: { ...v.channel!, subscribers: v.channel!.subscribers + 1 } } : null);
@@ -204,8 +211,8 @@ function WatchPageContent() {
 
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-10 aspect-video w-full bg-black">
-        <video src={video.videoUrl} controls autoPlay className="h-full w-full" />
+      <div className="sticky top-0 z-10 w-full bg-black">
+        <CustomVideoPlayer src={video.videoUrl} autoPlay />
       </div>
 
       <div className="p-4 space-y-4">
@@ -226,7 +233,7 @@ function WatchPageContent() {
                 <p className="text-sm text-muted-foreground">{formatViews(video.channel.subscribers)} subscribers</p>
               </div>
             </Link>
-            {user?.uid !== video.channel.id && (
+            {user?.channel?.id !== video.channel.id && (
               <Button
                 variant={isSubscribed ? "secondary" : "default"}
                 onClick={handleSubscribeToggle}
@@ -247,11 +254,30 @@ function WatchPageContent() {
             onClick={handleLikeToggle}
             disabled={!user || isInteracting}
           >
-            <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-current text-primary")} />
+            <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-primary text-primary")} />
             {formatViews(likeCount)}
           </Button>
         </div>
         
+        {user?.channel?.id === video.channel?.id && (
+          <div className="p-3 rounded-lg bg-secondary border border-primary/50">
+            <h3 className="text-lg font-semibold mb-2">Your Video Stats</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Views</p>
+                <p className="font-bold text-lg">{formatViews(video.views)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Likes</p>
+                <p className="font-bold text-lg">{formatViews(likeCount)}</p>
+              </div>
+            </div>
+            <Button asChild variant="outline" className="w-full mt-4">
+              <Link href="/studio">Go to Studio</Link>
+            </Button>
+          </div>
+        )}
+
         <div className="p-3 rounded-lg bg-secondary">
           <p className="text-sm whitespace-pre-wrap">{video.description || "No description available."}</p>
         </div>
