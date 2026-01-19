@@ -96,12 +96,13 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
     setFileName(metadata.title);
     setThumbnailPreview(URL.createObjectURL(thumbnailFile));
     
-    toast({ title: "Upload Started", description: `Your video '${metadata.title}' is now uploading.` });
-     if (Notification.permission === "granted") {
+    if ('Notification' in window && Notification.permission === "granted") {
         new Notification("GloVerse: Uploading...", {
             body: `Your video '${metadata.title}' is now uploading.`,
             icon: '/logo.png'
         });
+    } else {
+      toast({ title: "Upload Started", description: `Your video '${metadata.title}' is now uploading.` });
     }
 
     try {
@@ -139,19 +140,22 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
         duration: actualDuration,
       });
 
-      toast({ title: "Success", description: "Your video has been published!" });
-      if (Notification.permission === "granted") {
+      if ('Notification' in window && Notification.permission === "granted") {
         new Notification("GloVerse: Upload Complete!", {
           body: `'${metadata.title}' has been published.`,
           icon: thumbnailURL
         });
+      } else {
+        toast({ title: "Success", description: "Your video has been published!" });
       }
       resetState();
     } catch (error: any) {
       console.error("Upload failed", error);
-      toast({ variant: "destructive", title: "Upload Failed", description: error.message });
-      if (Notification.permission === "granted") {
-        new Notification("GloVerse: Upload Failed", { body: `Could not upload '${metadata.title}'. Reason: ${error.message}` });
+      const errorMessage = error.message || "An unknown error occurred during upload.";
+      if ('Notification' in window && Notification.permission === "granted") {
+        new Notification("GloVerse: Upload Failed", { body: `Could not upload '${metadata.title}'. Reason: ${errorMessage}` });
+      } else {
+        toast({ variant: "destructive", title: "Upload Failed", description: errorMessage });
       }
       resetState();
     }
