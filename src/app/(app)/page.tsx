@@ -8,7 +8,6 @@ import { Logo } from "@/components/ui/logo";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, orderBy, getDoc, doc } from "firebase/firestore";
 import { Video, Channel } from "@/lib/types";
-import { mockVideos } from "@/lib/mock-data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomePage() {
@@ -23,35 +22,31 @@ export default function HomePage() {
         const q = query(videosRef, where("visibility", "==", "public"), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
         
-        let fetchedVideos: Video[] = [];
-        if (!querySnapshot.empty) {
-            fetchedVideos = await Promise.all(querySnapshot.docs.map(async (videoDoc) => {
-                const videoData = videoDoc.data();
-                const channelRef = doc(db, "channels", videoData.channelId);
-                const channelSnap = await getDoc(channelRef);
-                const channelData = channelSnap.exists() ? { ...channelSnap.data(), id: channelSnap.id } as Channel : null;
-
-                return {
-                    id: videoDoc.id,
-                    ...videoData,
-                    createdAt: videoData.createdAt.toDate(),
-                    channel: channelData,
-                } as Video;
-            }));
-            // Filter out videos where channel data could not be fetched
-            fetchedVideos = fetchedVideos.filter(v => v.channel);
+        if (querySnapshot.empty) {
+          setVideos([]);
+          setLoading(false);
+          return;
         }
 
-        // If Firestore is empty or fetching failed partially, use mock data.
-        if (fetchedVideos.length === 0) {
-            setVideos(mockVideos);
-        } else {
-            setVideos(fetchedVideos);
-        }
+        const fetchedVideos: Video[] = await Promise.all(querySnapshot.docs.map(async (videoDoc) => {
+            const videoData = videoDoc.data();
+            const channelRef = doc(db, "channels", videoData.channelId);
+            const channelSnap = await getDoc(channelRef);
+            const channelData = channelSnap.exists() ? { ...channelSnap.data(), id: channelSnap.id } as Channel : null;
+
+            return {
+                id: videoDoc.id,
+                ...videoData,
+                createdAt: videoData.createdAt.toDate(),
+                channel: channelData,
+            } as Video;
+        }));
+        
+        setVideos(fetchedVideos.filter(v => v.channel));
 
       } catch (error) {
-        console.error("Error fetching videos, falling back to mock data:", error);
-        setVideos(mockVideos);
+        console.error("Error fetching videos:", error);
+        setVideos([]); // Set to empty array on error
       } finally {
         setLoading(false);
       }
@@ -125,7 +120,7 @@ export default function HomePage() {
         )}
         
         {!loading && videos.length === 0 && (
-             <p className="text-center text-muted-foreground py-16">No videos found.</p>
+             <p className="text-center text-muted-foreground py-16">No videos found. Be the first to upload!</p>
         )}
       </div>
     </div>
