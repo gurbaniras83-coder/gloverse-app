@@ -1,3 +1,4 @@
+
 "use client";
 
 import { VideoCard } from "@/components/video-card";
@@ -9,6 +10,8 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, orderBy, getDoc, doc } from "firebase/firestore";
 import { Video, Channel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+
+export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   const [videos, setVideos] = useState<Video[]>([]);

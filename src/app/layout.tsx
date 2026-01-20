@@ -51,11 +51,10 @@ export default function RootLayout({
         className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased`}
         suppressHydrationWarning
       >
-        {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
-        
         <AuthProvider>
           <UploadProvider>
             <>
+              {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
               {children}
               <Toaster />
               <UploadProgressIndicator />

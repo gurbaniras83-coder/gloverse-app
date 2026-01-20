@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,6 +16,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Video } from "@/lib/types";
 import { collection, query, where, orderBy, getDocs, limit } from "firebase/firestore";
+
+export const dynamic = 'force-dynamic';
 
 export default function YouPage() {
   const { user, loading } = useAuth();

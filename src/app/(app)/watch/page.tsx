@@ -20,6 +20,8 @@ import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
 
+export const dynamic = 'force-dynamic';
+
 function WatchPageContent() {
   const searchParams = useSearchParams();
   const videoId = searchParams.get("v");

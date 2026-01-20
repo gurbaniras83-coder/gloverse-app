@@ -21,6 +21,8 @@ import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { BottomNav } from '@/components/layout/bottom-nav';
 
+export const dynamic = 'force-dynamic';
+
 function ChannelPageContent() {
     const params = useParams();
     const { user, loading: authLoading } = useAuth();

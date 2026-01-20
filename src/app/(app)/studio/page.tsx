@@ -42,6 +42,8 @@ import { ViewsChart } from "@/components/analytics/views-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
+export const dynamic = 'force-dynamic';
+
 const editVideoSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().max(5000).optional(),

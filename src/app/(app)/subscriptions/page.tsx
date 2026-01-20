@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Clapperboard, Loader2 } from "lucide-react";
@@ -9,6 +10,8 @@ import { useState, useEffect } from "react";
 import type { Video, Channel } from "@/lib/types";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+
+export const dynamic = 'force-dynamic';
 
 export default function SubscriptionsPage() {
   const { user, loading: authLoading } = useAuth();
