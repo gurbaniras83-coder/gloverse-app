@@ -61,8 +61,8 @@ export default function HomePage() {
   const longVideos = videos.filter(v => v.type === 'long');
   const shorts = videos.filter(v => v.type === 'short');
 
-  const firstLongVideos = longVideos.slice(0, 3);
-  const remainingLongVideos = longVideos.slice(3);
+  const firstLongVideos = longVideos.slice(0, 2);
+  const remainingLongVideos = longVideos.slice(2);
   
   if (loading) {
       return (
@@ -101,7 +101,7 @@ export default function HomePage() {
         {firstLongVideos.length > 0 && (
             <div className="flex flex-col space-y-6 p-4">
             {firstLongVideos.map((video, index) => (
-                <React.Fragment key={`first-${video.id}`}>
+                <React.Fragment key={video.id}>
                 <VideoCard video={video} />
                 {index < firstLongVideos.length -1 && <Separator className="my-2" />}
                 </React.Fragment>
@@ -114,7 +114,7 @@ export default function HomePage() {
         {remainingLongVideos.length > 0 && (
             <div className="flex flex-col space-y-6 p-4 pt-6">
             {remainingLongVideos.map((video, index) => (
-                <React.Fragment key={`remaining-${video.id}`}>
+                <React.Fragment key={video.id}>
                 <VideoCard video={video} />
                 {index < remainingLongVideos.length - 1 && <Separator className="my-2" />}
                 </React.Fragment>

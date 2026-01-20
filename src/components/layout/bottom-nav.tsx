@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -91,7 +92,7 @@ export function BottomNav() {
               : pathname.startsWith(item.href);
           return (
             <Link
-              key={item.label}
+              key={item.href}
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 p-2 text-muted-foreground transition-colors hover:text-primary",

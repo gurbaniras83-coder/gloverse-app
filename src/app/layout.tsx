@@ -9,6 +9,7 @@ import { UploadProvider } from "@/context/upload-provider";
 import UploadProgressIndicator from "@/components/upload-progress-indicator";
 import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
+import React from "react";
 
 const inter = Inter({
   subsets: ["latin"],
