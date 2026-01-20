@@ -54,12 +54,12 @@ export default function RootLayout({
       >
         <AuthProvider>
           <UploadProvider>
-            <>
+            <div>
               {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
               {children}
               <Toaster />
               <UploadProgressIndicator />
-            </>
+            </div>
           </UploadProvider>
         </AuthProvider>
       </body>
