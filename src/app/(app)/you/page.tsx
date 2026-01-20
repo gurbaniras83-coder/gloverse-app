@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -27,51 +26,65 @@ export default function YouPage() {
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) {
+      return; // Wait until auth state is determined
+    }
+    if (!user) {
       router.replace("/login");
+      setPageLoading(false);
+      return;
     }
-  }, [user, loading, router]);
-  
-  useEffect(() => {
-    if (user) {
-      // In a real history implementation, you'd fetch videos the user has watched.
-      // For this demo, we'll just fetch some recent videos to populate the UI.
-      const fetchRecentVideos = async () => {
-        setPageLoading(true);
-        try {
-          const videosQuery = query(
-            collection(db, "videos"), 
-            where("visibility", "==", "public"),
-            orderBy("createdAt", "desc"), 
-            limit(5)
-          );
-          const snapshot = await getDocs(videosQuery);
-          const videos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Video));
-          setHistoryVideos(videos);
-        } catch (error) {
-          console.error("Error fetching recent videos for history:", error);
-        } finally {
-          setPageLoading(false);
-        }
-      };
-      fetchRecentVideos();
-    }
-  }, [user]);
+
+    const fetchRecentVideos = async () => {
+      setPageLoading(true);
+      try {
+        const videosQuery = query(
+          collection(db, "videos"), 
+          where("visibility", "==", "public"),
+          orderBy("createdAt", "desc"), 
+          limit(5)
+        );
+        const snapshot = await getDocs(videosQuery);
+        const videos = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt.toDate() } as Video));
+        setHistoryVideos(videos);
+      } catch (error) {
+        console.error("Error fetching recent videos for history:", error);
+        setHistoryVideos([]);
+        toast({ variant: "destructive", title: "Could not load history." });
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    fetchRecentVideos();
+  }, [user, loading, router, toast]);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push("/login");
+      router.refresh();
     } catch (error) {
       toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred while logging out." });
     }
   };
-
-  if (loading || pageLoading || !user) {
+  
+  if (loading || pageLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+     return (
+      <div className="flex h-screen flex-col items-center justify-center text-center">
+         <p className="mb-4">Please log in to see your profile.</p>
+         <Button asChild>
+            <Link href="/login">Log In</Link>
+         </Button>
       </div>
     );
   }
@@ -88,7 +101,7 @@ export default function YouPage() {
   }
 
   return (
-    <div className="p-4 space-y-8">
+    <div className="p-4 space-y-8 pb-24">
       <div className="flex items-center gap-4">
         <Avatar className="h-20 w-20">
           <AvatarImage src={user.channel.photoURL} alt={user.channel.handle} />
@@ -134,7 +147,6 @@ export default function YouPage() {
         </div>
       )}
 
-
       <Separator />
 
       <div>
@@ -149,7 +161,6 @@ export default function YouPage() {
                 </div>
                 <div className="flex-1">
                     <p className="font-semibold">Liked videos</p>
-                    {/* In a real app, you would fetch the count of liked videos */}
                     <p className="text-sm text-muted-foreground">Playlist</p>
                 </div>
                 <ChevronRight className="text-muted-foreground"/>
@@ -166,9 +177,11 @@ export default function YouPage() {
             Gloverse Studio
           </Link>
         </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3">
-          <Settings className="h-5 w-5 text-primary" />
-          Settings
+        <Button variant="ghost" className="w-full justify-start gap-3" asChild>
+            <Link href="/studio/customize">
+                <Settings className="h-5 w-5 text-primary" />
+                Settings
+            </Link>
         </Button>
         <Button variant="ghost" className="w-full justify-start gap-3 text-destructive hover:text-destructive" onClick={handleLogout}>
           <LogOut className="h-5 w-5" />

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Clapperboard, Loader2 } from "lucide-react";
@@ -10,16 +9,20 @@ import { useState, useEffect } from "react";
 import type { Video, Channel } from "@/lib/types";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export const dynamic = 'force-dynamic';
 
 export default function SubscriptionsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      return; // Wait for auth to finish
+    }
 
     if (!user) {
       setIsLoading(false);
@@ -37,13 +40,12 @@ export default function SubscriptionsPage() {
 
         if (subscribedChannelIds.length === 0) {
           setVideos([]);
-          setIsLoading(false);
-          return;
+          return; // No finally needed here, isLoading will be set after
         }
 
         // 2. Fetch videos from subscribed channels
-        // Firestore 'in' query is limited to 30 items. For a larger scale app, this would need a different data model (e.g., a "feed" collection for each user).
-        const videosQuery = query(collection(db, "videos"), where("channelId", "in", subscribedChannelIds), where("visibility", "==", "public"));
+        // Firestore 'in' query is limited to 30 items. For a larger scale app, this would need a different data model.
+        const videosQuery = query(collection(db, "videos"), where("channelId", "in", subscribedChannelIds.slice(0, 30)), where("visibility", "==", "public"));
         const videosSnapshot = await getDocs(videosQuery);
         
         const fetchedVideos = await Promise.all(videosSnapshot.docs.map(async (videoDoc) => {
@@ -65,6 +67,7 @@ export default function SubscriptionsPage() {
 
       } catch (error) {
         console.error("Error fetching subscribed videos:", error);
+        toast({ variant: 'destructive', title: "Could not load subscriptions."});
         setVideos([]);
       } finally {
         setIsLoading(false);
@@ -72,9 +75,10 @@ export default function SubscriptionsPage() {
     };
 
     fetchSubscribedVideos();
-  }, [user, authLoading]);
-
-  if (isLoading || authLoading) {
+  }, [user, authLoading, toast]);
+  
+  // Main loading state for the whole page
+  if (authLoading || isLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -82,6 +86,25 @@ export default function SubscriptionsPage() {
     );
   }
 
+  // If not loading, and no user, show login prompt
+  if (!user) {
+     return (
+         <div className="flex flex-col items-center justify-center text-center h-96">
+          <Clapperboard className="w-16 h-16 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold">No videos yet</h2>
+          <p className="text-muted-foreground mt-2 max-w-xs">
+            Log in to see videos from your subscriptions.
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/login">
+              Log In
+            </Link>
+          </Button>
+        </div>
+     )
+  }
+
+  // If user is logged in, and videos have been fetched (or are empty)
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold font-headline mb-4">Subscriptions</h1>
@@ -94,13 +117,13 @@ export default function SubscriptionsPage() {
       ) : (
         <div className="flex flex-col items-center justify-center text-center h-96">
           <Clapperboard className="w-16 h-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold">No videos yet</h2>
+          <h2 className="text-xl font-semibold">No videos from your subscriptions</h2>
           <p className="text-muted-foreground mt-2 max-w-xs">
-            {user ? "Videos from your subscriptions will appear here." : "Log in to see videos from your subscriptions."}
+            Videos from channels you subscribe to will appear here.
           </p>
           <Button asChild className="mt-4">
-            <Link href={user ? "/" : "/login"}>
-              {user ? "Explore Channels" : "Log In"}
+            <Link href="/">
+              Explore Channels
             </Link>
           </Button>
         </div>
