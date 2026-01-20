@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search } from "lucide-react";
 import { debounce } from "lodash";
@@ -99,6 +99,7 @@ export function SearchDialog() {
       </DialogTrigger>
       <DialogContent className="top-0 translate-y-0 h-full max-h-[100dvh] max-w-[500px] flex flex-col p-0 gap-0">
         <DialogHeader className="p-4 border-b">
+          <DialogTitle className="sr-only">Search Gloverse</DialogTitle>
           <div className="flex items-center gap-2">
             <Search className="h-5 w-5 text-muted-foreground" />
             <Input 
