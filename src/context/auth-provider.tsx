@@ -21,7 +21,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Failsafe timer to prevent infinite loading state on startup
+    const startupTimer = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+      }
+    }, 1500);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+      clearTimeout(startupTimer); // Clear the failsafe timer as we have a response
       if (firebaseUser) {
         const channelDocRef = doc(db, "channels", firebaseUser.uid);
         const channelDoc = await getDoc(channelDocRef);
@@ -39,8 +47,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribe();
+      clearTimeout(startupTimer);
+    };
+  }, []); // Empty dependency array is correct here
 
   return (
     <AuthContext.Provider value={{ user, loading }}>

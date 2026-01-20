@@ -19,24 +19,33 @@ import { collection, query, where, orderBy, getDocs, limit } from "firebase/fire
 export const dynamic = 'force-dynamic';
 
 export default function YouPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [historyVideos, setHistoryVideos] = useState<Video[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
-    if (loading) {
-      return; // Wait until auth state is determined
+    // Don't do anything until auth state is resolved
+    if (authLoading) {
+      return;
     }
+    
+    // If auth is resolved and there's no user, stop loading. The UI will show the login prompt.
     if (!user) {
-      router.replace("/login");
       setPageLoading(false);
       return;
     }
 
+    // User is logged in, proceed to fetch data
+    let isMounted = true;
+    const fetchTimeout = setTimeout(() => {
+        if (isMounted) {
+            setPageLoading(false);
+        }
+    }, 2000);
+
     const fetchRecentVideos = async () => {
-      setPageLoading(true);
       try {
         const videosQuery = query(
           collection(db, "videos"), 
@@ -45,19 +54,33 @@ export default function YouPage() {
           limit(5)
         );
         const snapshot = await getDocs(videosQuery);
-        const videos = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt.toDate() } as Video));
-        setHistoryVideos(videos);
+        if (isMounted) {
+            const videos = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt.toDate() } as Video));
+            setHistoryVideos(videos);
+        }
       } catch (error) {
         console.error("Error fetching recent videos for history:", error);
-        setHistoryVideos([]);
-        toast({ variant: "destructive", title: "Could not load history." });
+        if (isMounted) {
+            setHistoryVideos([]);
+            toast({ variant: "destructive", title: "Could not load history." });
+        }
       } finally {
-        setPageLoading(false);
+        if (isMounted) {
+            clearTimeout(fetchTimeout);
+            setPageLoading(false);
+        }
       }
     };
 
     fetchRecentVideos();
-  }, [user, loading, router, toast]);
+    
+    return () => {
+        isMounted = false;
+        clearTimeout(fetchTimeout);
+    };
+
+  }, [user, authLoading, toast]);
+
 
   const handleLogout = async () => {
     try {
@@ -70,7 +93,7 @@ export default function YouPage() {
     }
   };
   
-  if (loading || pageLoading) {
+  if (authLoading || pageLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -80,8 +103,8 @@ export default function YouPage() {
 
   if (!user) {
      return (
-      <div className="flex h-screen flex-col items-center justify-center text-center">
-         <p className="mb-4">Please log in to see your profile.</p>
+      <div className="flex h-screen flex-col items-center justify-center text-center p-4">
+         <p className="mb-4 text-lg">See your profile and activity.</p>
          <Button asChild>
             <Link href="/login">Log In</Link>
          </Button>
@@ -90,10 +113,11 @@ export default function YouPage() {
   }
   
   if (!user.channel) {
+    // This case can happen briefly while the channel is being created after signup
     return (
       <div className="flex h-screen items-center justify-center p-4 text-center">
         <div>
-          <p className="mb-4">Setting up your channel...</p>
+          <p className="mb-4">Finalizing your channel setup...</p>
           <Loader2 className="h-8 w-8 animate-spin mx-auto" />
         </div>
       </div>
