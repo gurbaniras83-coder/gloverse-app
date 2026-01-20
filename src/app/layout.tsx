@@ -49,6 +49,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased`}
+        suppressHydrationWarning
       >
         {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
         
