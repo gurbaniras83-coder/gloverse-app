@@ -1,6 +1,3 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-
 export default function NotFound() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
@@ -10,9 +7,12 @@ export default function NotFound() {
         <p className="mt-2 text-lg text-muted-foreground">
           Sorry, we couldn’t find the page you’re looking for.
         </p>
-        <Button asChild className="mt-6">
-          <Link href="/">Go back home</Link>
-        </Button>
+        <a 
+          href="/" 
+          className="mt-6 inline-flex h-10 items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          Go back home
+        </a>
       </div>
     </div>
   );
