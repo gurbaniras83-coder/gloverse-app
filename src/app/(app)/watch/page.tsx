@@ -61,22 +61,34 @@ function WatchPageContent() {
       setVideo(videoData);
       setLikeCount(videoData.likes || 0);
 
-      // Unique view count logic
-      const viewedVideosKey = 'viewedVideos';
-      const viewedVideos = JSON.parse(localStorage.getItem(viewedVideosKey) || '[]');
-      if (!viewedVideos.includes(videoId)) {
-          await updateDoc(videoRef, { views: increment(1) });
-          // Add to local storage for this session
-          viewedVideos.push(videoId);
-          localStorage.setItem(viewedVideosKey, JSON.stringify(viewedVideos));
-          // Update state to reflect new view count immediately
-          setVideo(v => v ? { ...v, views: (v.views || 0) + 1 } : null);
-      }
     } catch(e) {
       console.error(e);
       setVideo(null);
     }
   }, [videoId]);
+
+  // Unique view count logic, runs only on client after hydration
+  useEffect(() => {
+    if (videoId && video) {
+        const viewedVideosKey = 'viewedVideos';
+        try {
+            const viewedVideos = JSON.parse(localStorage.getItem(viewedVideosKey) || '[]');
+            if (!viewedVideos.includes(videoId)) {
+                const videoRef = doc(db, "videos", videoId);
+                updateDoc(videoRef, { views: increment(1) });
+                
+                viewedVideos.push(videoId);
+                localStorage.setItem(viewedVideosKey, JSON.stringify(viewedVideos));
+
+                // Optimistically update state
+                setVideo(v => v ? { ...v, views: (v.views || 0) + 1 } : null);
+            }
+        } catch (error) {
+            console.error("Error processing view count:", error);
+        }
+    }
+  }, [videoId, video]);
+
 
   const fetchSuggestedVideos = useCallback(async () => {
     if (!videoId) return;

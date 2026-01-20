@@ -28,7 +28,7 @@ export default function RootLayout({
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // This check ensures the splash screen is only shown once per session.
+    // This check ensures the splash screen is only shown once per session on the client.
     if (sessionStorage.getItem("splashShown")) {
       setShowSplash(false);
     }
@@ -50,19 +50,17 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased`}
       >
-        {showSplash ? (
-          <SplashScreen onFinished={handleSplashFinish} />
-        ) : (
-          <AuthProvider>
-            <UploadProvider>
-              <>
-                {children}
-                <Toaster />
-                <UploadProgressIndicator />
-              </>
-            </UploadProvider>
-          </AuthProvider>
-        )}
+        {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
+        
+        <AuthProvider>
+          <UploadProvider>
+            <>
+              {children}
+              <Toaster />
+              <UploadProgressIndicator />
+            </>
+          </UploadProvider>
+        </AuthProvider>
       </body>
     </html>
   );

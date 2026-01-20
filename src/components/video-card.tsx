@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -59,11 +60,13 @@ export function VideoCard({ video }: VideoCardProps) {
             data-ai-hint="video thumbnail"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center" />
+          <div className="flex h-full w-full items-center justify-center bg-secondary" />
         )}
-        <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
-          {duration}
-        </div>
+        {video.duration > 0 && (
+          <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
+            {duration}
+          </div>
+        )}
       </Link>
       <div className="flex items-start space-x-3">
         <Link href={`/@${video.channel.handle}`} className="flex-shrink-0">
@@ -92,11 +95,9 @@ export function VideoCard({ video }: VideoCardProps) {
             </p>
           </Link>
           <div className="mt-1 text-sm text-muted-foreground">
-            <Link href={`/@${video.channel.handle}`}>
-              <p className="truncate hover:text-primary">
-                {video.channel.fullName}
-              </p>
-            </Link>
+            <p className="truncate hover:text-primary">
+              <Link href={`/@${video.channel.handle}`}>{video.channel.fullName}</Link>
+            </p>
             <p>
               {formatViews(video.views)} views &middot; {timeAgo}
             </p>
@@ -105,6 +106,7 @@ export function VideoCard({ video }: VideoCardProps) {
         <button
           onClick={handleMenuClick}
           className="p-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          aria-label="More options"
         >
           <MoreVertical className="w-5 h-5 text-muted-foreground" />
         </button>
