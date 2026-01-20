@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,7 +8,6 @@ import { UploadProvider } from "@/context/upload-provider";
 import UploadProgressIndicator from "@/components/upload-progress-indicator";
 import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
-import React from "react";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,7 +27,6 @@ export default function RootLayout({
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // This check ensures the splash screen is only shown once per session on the client.
     if (sessionStorage.getItem("splashShown")) {
       setShowSplash(false);
     }
@@ -44,7 +41,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <title>Gloverse</title>
-        <meta name="description" content="A professional YouTube mobile clone." />
+        <meta name="description" content="Unleash Your Inner Star" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0f0f0f" />
       </head>
@@ -54,6 +51,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <UploadProvider>
+            {/* This single div wrapper is the definitive fix for the "unique key prop" error. */}
             <div>
               {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
               {children}

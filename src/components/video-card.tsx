@@ -1,8 +1,8 @@
-
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Video } from "@/lib/types";
@@ -16,6 +16,8 @@ type VideoCardProps = {
 };
 
 export function VideoCard({ video }: VideoCardProps) {
+  const router = useRouter();
+
   if (!video || !video.channel) {
     return (
       <div className="space-y-3">
@@ -45,12 +47,17 @@ export function VideoCard({ video }: VideoCardProps) {
     alert("Menu clicked for " + video.title);
   };
 
+  const handleNavigate = (path: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    router.push(path);
+  };
+
   return (
-    <div className="flex flex-col space-y-3 group">
-      <Link
-        href={`/watch?v=${video.id}`}
-        className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted block"
-      >
+    <div
+      className="flex flex-col space-y-3 group cursor-pointer"
+      onClick={() => handleNavigate(`/watch?v=${video.id}`)}
+    >
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted block">
         {video.thumbnailUrl ? (
           <Image
             src={video.thumbnailUrl}
@@ -67,9 +74,12 @@ export function VideoCard({ video }: VideoCardProps) {
             {duration}
           </div>
         )}
-      </Link>
+      </div>
       <div className="flex items-start space-x-3">
-        <Link href={`/@${video.channel.handle}`} className="flex-shrink-0">
+        <div
+          onClick={(e) => handleNavigate(`/@${video.channel.handle}`, e)}
+          className="flex-shrink-0"
+        >
           <Avatar>
             <AvatarImage
               src={video.channel.photoURL}
@@ -79,24 +89,25 @@ export function VideoCard({ video }: VideoCardProps) {
               {video.channel.handle.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-        </Link>
+        </div>
         <div className="min-w-0 flex-1">
-          <Link href={`/watch?v=${video.id}`} className="block">
-            <p
-              className="text-base font-medium leading-tight text-foreground clamp-2"
-              style={{
-                WebkitLineClamp: 2,
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {video.title}
-            </p>
-          </Link>
+          <p
+            className="text-base font-medium leading-tight text-foreground clamp-2"
+            style={{
+              WebkitLineClamp: 2,
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {video.title}
+          </p>
           <div className="mt-1 text-sm text-muted-foreground">
-            <p className="truncate hover:text-primary">
-              <Link href={`/@${video.channel.handle}`}>{video.channel.fullName}</Link>
+            <p
+              className="truncate hover:text-primary"
+              onClick={(e) => handleNavigate(`/@${video.channel.handle}`, e)}
+            >
+              {video.channel.fullName}
             </p>
             <p>
               {formatViews(video.views)} views &middot; {timeAgo}

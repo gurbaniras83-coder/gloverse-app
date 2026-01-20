@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useState, useContext, ReactNode } from "react";
@@ -154,10 +153,13 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
       setFileName("");
       setThumbnailPreview(null);
   }
+  
+  const value = { isUploading, uploadProgress, uploadTask, fileName, thumbnailPreview, startUpload, cancelUpload };
 
   return (
-    <UploadContext.Provider value={{ isUploading, uploadProgress, uploadTask, fileName, thumbnailPreview, startUpload, cancelUpload }}>
-      {children}
+    <UploadContext.Provider value={value}>
+        {/* Per user's strict instructions, adding a keyed div wrapper as a safeguard. */}
+        <div key="upload-root-container">{children}</div>
     </UploadContext.Provider>
   );
 };
