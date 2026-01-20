@@ -27,15 +27,25 @@ export default function RootLayout({
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // Correctly check sessionStorage only on the client
     if (sessionStorage.getItem("splashShown")) {
       setShowSplash(false);
+    } else {
+        // If not shown, show it and then set the flag.
+        const timer = setTimeout(() => {
+            sessionStorage.setItem("splashShown", "true");
+            setShowSplash(false);
+        }, 3000);
+        return () => clearTimeout(timer);
     }
   }, []);
+
 
   const handleSplashFinish = () => {
     sessionStorage.setItem("splashShown", "true");
     setShowSplash(false);
   };
+
 
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
@@ -51,13 +61,10 @@ export default function RootLayout({
       >
         <AuthProvider>
           <UploadProvider>
-            {/* This single div wrapper is the definitive fix for the "unique key prop" error. */}
-            <div>
-              {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
-              {children}
-              <Toaster />
-              <UploadProgressIndicator />
-            </div>
+            {showSplash && <SplashScreen onFinished={handleSplashFinish} />}
+            {children}
+            <Toaster />
+            <UploadProgressIndicator />
           </UploadProvider>
         </AuthProvider>
       </body>

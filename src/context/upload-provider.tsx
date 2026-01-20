@@ -158,8 +158,7 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <UploadContext.Provider value={value}>
-        {/* Per user's strict instructions, adding a keyed div wrapper as a safeguard. */}
-        <div key="upload-root-container">{children}</div>
+        <div key="upload-provider-wrapper">{children}</div>
     </UploadContext.Provider>
   );
 };
