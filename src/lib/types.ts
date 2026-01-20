@@ -30,6 +30,7 @@ export type Video = {
   type: 'long' | 'short';
   visibility: 'public' | 'private';
   likes: number;
+  category?: string;
 };
 
 export type Comment = {

@@ -4,18 +4,19 @@ import { VideoCard } from "@/components/video-card";
 import { Separator } from "@/components/ui/separator";
 import React, { useState, useEffect } from "react";
 import { ShortsShelf } from "@/components/shorts-shelf";
-import { Logo } from "@/components/ui/logo";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, orderBy, getDoc, doc } from "firebase/firestore";
 import { Video, Channel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mockVideos } from "@/lib/mock-data";
+import { CategoryShelf } from "@/components/category-shelf";
 
 export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -26,7 +27,6 @@ export default function HomePage() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          // Fallback to mock data if database is empty
           console.log("No videos found in Firestore, falling back to mock data.");
           setVideos(mockVideos);
           return;
@@ -50,7 +50,6 @@ export default function HomePage() {
 
       } catch (error) {
         console.error("Error fetching videos:", error);
-        // Fallback to mock data on error as well
         setVideos(mockVideos);
       } finally {
         setLoading(false);
@@ -60,16 +59,21 @@ export default function HomePage() {
     fetchVideos();
   }, []);
 
-  const longVideos = videos.filter(v => v.type === 'long');
-  const shorts = videos.filter(v => v.type === 'short');
+  const filteredVideos = videos.filter(v => {
+      if (selectedCategory === "All") return true;
+      return v.category === selectedCategory;
+  });
+
+  const longVideos = filteredVideos.filter(v => v.type === 'long');
+  const shorts = filteredVideos.filter(v => v.type === 'short');
 
   const firstLongVideos = longVideos.slice(0, 2);
   const remainingLongVideos = longVideos.slice(2);
   
   if (loading) {
       return (
-          <div className="flex flex-col">
-            <header className="p-4"><Logo /></header>
+          <>
+            <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
             <div className="p-4 space-y-6">
                 <Skeleton className="w-full aspect-video rounded-xl" />
                 <div className="flex items-start space-x-3">
@@ -89,23 +93,21 @@ export default function HomePage() {
                     </div>
                 </div>
             </div>
-          </div>
+          </>
       )
   }
 
   return (
     <div className="flex flex-col">
-      <header className="p-4">
-        <Logo />
-      </header>
+      <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
       <div className="flex flex-col">
         
-        {firstLongVideos.length > 0 && (
+        {longVideos.length > 0 && (
             <div className="flex flex-col space-y-6 p-4">
-            {firstLongVideos.map((video, index) => (
+            {longVideos.map((video, index) => (
                 <React.Fragment key={video.id}>
                 <VideoCard video={video} />
-                {index < firstLongVideos.length -1 && <Separator className="my-2" />}
+                {(index < longVideos.length - 1) && <Separator className="my-2" />}
                 </React.Fragment>
             ))}
             </div>
@@ -113,15 +115,8 @@ export default function HomePage() {
 
         {shorts.length > 0 && <ShortsShelf shorts={shorts} />}
 
-        {remainingLongVideos.length > 0 && (
-            <div className="flex flex-col space-y-6 p-4 pt-6">
-            {remainingLongVideos.map((video, index) => (
-                <React.Fragment key={video.id}>
-                <VideoCard video={video} />
-                {index < remainingLongVideos.length - 1 && <Separator className="my-2" />}
-                </React.Fragment>
-            ))}
-            </div>
+        {!loading && videos.length > 0 && filteredVideos.length === 0 && (
+             <p className="text-center text-muted-foreground py-16">No videos found in the "{selectedCategory}" category.</p>
         )}
         
         {!loading && videos.length === 0 && (

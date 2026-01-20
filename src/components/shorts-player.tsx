@@ -14,6 +14,8 @@ import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { formatViews } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { CommentSection } from "@/components/comment-section";
 
 interface ShortCardProps {
   short: Video;
@@ -35,7 +37,6 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
   const [commentCount, setCommentCount] = useState(0);
   const [isInteracting, setIsInteracting] = useState(false);
 
-  // Effect for fetching comment count
   useEffect(() => {
     if (!short.id) return;
     const commentsRef = collection(db, "videos", short.id, "comments");
@@ -47,7 +48,6 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
     return () => unsubscribe();
   }, [short.id]);
   
-  // Effect for checking initial like status
   useEffect(() => {
     if (!user || !short.id) {
         setIsLiked(false);
@@ -61,7 +61,6 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
   }, [user, short.id]);
 
 
-  // Effect for video playback based on intersection
   useEffect(() => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
@@ -72,7 +71,6 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
       if (playPromise !== undefined) {
         playPromise.then(() => setIsPlaying(true)).catch(error => {
           setIsPlaying(false);
-          // Autoplay was prevented. User may need to interact first.
         });
       }
     } else {
@@ -166,7 +164,7 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
       <div className="absolute bottom-4 left-4 text-white">
         <Link href={`/@${short.channel.handle}`} className="flex items-center gap-2 group" onClick={e => e.stopPropagation()}>
           <Avatar className="h-10 w-10 border-2 border-white">
-            <AvatarImage src={short.channel.photoURL} />
+            <AvatarImage src={short.channel.photoURL} alt={short.channel.handle} />
             <AvatarFallback>{short.channel.handle[0]}</AvatarFallback>
           </Avatar>
           <span className="font-semibold group-hover:underline">@{short.channel.handle}</span>
@@ -179,10 +177,22 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
           <Heart className={cn("h-8 w-8 transition-colors", isLiked && "fill-red-500 text-red-500")} />
           <span className="text-xs font-semibold">{formatViews(likeCount)}</span>
         </Button>
-        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
-          <MessageCircle className="h-8 w-8" />
-          <span className="text-xs font-semibold">{formatViews(commentCount)}</span>
-        </Button>
+        <Sheet onOpenChange={(open) => { if (open && isPlaying) videoRef.current?.pause(); }}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
+              <MessageCircle className="h-8 w-8" />
+              <span className="text-xs font-semibold">{formatViews(commentCount)}</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[80dvh] max-w-[500px] mx-auto flex flex-col p-0 bg-background border-t-0 rounded-t-2xl">
+             <SheetHeader className="text-left p-4 border-b">
+                <SheetTitle>Comments ({formatViews(commentCount)})</SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto no-scrollbar">
+                <CommentSection videoId={short.id} />
+            </div>
+          </SheetContent>
+        </Sheet>
         <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
           <Send className="h-8 w-8" />
           <span className="text-xs">Share</span>
@@ -198,7 +208,7 @@ export function ShortsPlayer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleShortId, setVisibleShortId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
-  const [hasInteracted, setHasInteracted] = useState(false); // Global interaction state for the player
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
     const fetchShorts = async () => {
@@ -293,7 +303,7 @@ export function ShortsPlayer() {
   }, [shorts, loading, visibleShortId]);
 
     if(loading) {
-        return <div className="h-full w-full flex items-center justify-center text-white bg-black"><Loader2 className="w-8 h-8 animate-spin"/></div>
+        return <div className="h-full w-full flex items-center justify-center text-white bg-black"><Loader2 className="w-8 h-8 animate-spin text-primary"/></div>
     }
 
     if(shorts.length === 0) {

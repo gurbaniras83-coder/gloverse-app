@@ -16,11 +16,14 @@ export const mockVideos: Video[] = [
     thumbnailUrl: findImage("vid1"),
     channel: mockChannels[0],
     views: 102345,
+    likes: 12000,
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
     duration: 620,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
     description: "A deep dive into server components and a full tutorial on building a modern web app with Next.js.",
-    type: 'long'
+    type: 'long',
+    visibility: 'public',
+    category: "Tech",
   },
   {
     id: "vid2",
@@ -28,11 +31,14 @@ export const mockVideos: Video[] = [
     thumbnailUrl: findImage("vid2"),
     channel: mockChannels[1],
     views: 88765,
+    likes: 8000,
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
     duration: 1230,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
     description: "Learn the fundamentals of UI/UX design to make your applications not only functional but also beautiful and intuitive.",
-    type: 'long'
+    type: 'long',
+    visibility: 'public',
+    category: "Design",
   },
   {
     id: "vid3",
@@ -40,11 +46,14 @@ export const mockVideos: Video[] = [
     thumbnailUrl: findImage("vid3"),
     channel: mockChannels[2],
     views: 5421,
+    likes: 300,
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
     duration: 945,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
     description: "A breathtaking journey through the mountains of Switzerland. Drone shots, hiking trails, and more!",
-    type: 'long'
+    type: 'long',
+    visibility: 'public',
+    category: "Travel",
   },
   {
     id: "vid4",
@@ -52,11 +61,14 @@ export const mockVideos: Video[] = [
     thumbnailUrl: findImage("vid4"),
     channel: mockChannels[0],
     views: 205813,
+    likes: 25000,
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
     duration: 480,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
     description: "Master the art of cooking the perfect steak every single time. We cover everything from cut selection to searing.",
-    type: 'long'
+    type: 'long',
+    visibility: 'public',
+    category: "Food",
   },
    {
     id: "short1",
@@ -64,11 +76,14 @@ export const mockVideos: Video[] = [
     thumbnailUrl: findImage("short1"),
     channel: mockChannels[1],
     views: 1200000,
+    likes: 50000,
     createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
     duration: 45,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     description: "Just my cat being a goofball #cats #funny #shorts",
     type: 'short',
+    visibility: 'public',
+    category: "Animals",
   },
   {
     id: "short2",
@@ -76,18 +91,21 @@ export const mockVideos: Video[] = [
     thumbnailUrl: findImage("short2"),
     channel: mockChannels[2],
     views: 2500000,
+    likes: 120000,
     createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
     duration: 59,
     videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
     description: "The city that never sleeps. #nyc #timelapse #city",
     type: 'short',
+    visibility: 'public',
+    category: "Travel",
   },
 ];
 
 export const mockShorts: Video[] = mockVideos.filter(v => v.type === 'short');
 
 export const mockComments: Comment[] = [
-    { id: "c1", user: { name: "David", avatar: "https://avatar.vercel.sh/david.png" }, text: "This was so helpful! Thank you!", timestamp: new Date(Date.now() - 5 * 60 * 1000) },
-    { id: "c2", user: { name: "Sarah", avatar: "https://avatar.vercel.sh/sarah.png" }, text: "Great video, I learned a lot.", timestamp: new Date(Date.now() - 15 * 60 * 1000) },
-    { id: "c3", user: { name: "Mike", avatar: "https://avatar.vercel.sh/mike.png" }, text: "Can you do a video on React hooks next?", timestamp: new Date(Date.now() - 30 * 60 * 1000) },
+    { id: "c1", user: { name: "David", avatar: "https://avatar.vercel.sh/david.png", uid: "mockuser1" }, text: "This was so helpful! Thank you!", timestamp: new Date(Date.now() - 5 * 60 * 1000) },
+    { id: "c2", user: { name: "Sarah", avatar: "https://avatar.vercel.sh/sarah.png", uid: "mockuser2" }, text: "Great video, I learned a lot.", timestamp: new Date(Date.now() - 15 * 60 * 1000) },
+    { id: "c3", user: { name: "Mike", avatar: "https://avatar.vercel.sh/mike.png", uid: "mockuser3" }, text: "Can you do a video on React hooks next?", timestamp: new Date(Date.now() - 30 * 60 * 1000) },
 ]
