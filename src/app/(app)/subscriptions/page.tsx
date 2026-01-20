@@ -20,25 +20,18 @@ export default function SubscriptionsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for auth to finish
     if (authLoading) {
-      return;
+      return; // Wait for auth state to be resolved
     }
-    // If auth is done and no user, stop loading. UI will show login prompt.
+    
     if (!user) {
-      setIsLoading(false);
+      setIsLoading(false); // If no user, stop loading and show login prompt
       setVideos([]);
       return;
     }
 
-    // User is logged in, fetch data
-    let isMounted = true;
-    // Failsafe timeout
-    const fetchTimeout = setTimeout(() => {
-        if (isMounted) setIsLoading(false);
-    }, 2500); // A bit longer since it's a more complex query
-
     const fetchSubscribedVideos = async () => {
+      setIsLoading(true);
       try {
         // 1. Get user's subscriptions
         const subsRef = collection(db, "users", user.uid, "subscriptions");
@@ -46,14 +39,14 @@ export default function SubscriptionsPage() {
         const subscribedChannelIds = subsSnapshot.docs.map(doc => doc.id);
 
         if (subscribedChannelIds.length === 0) {
-          if (isMounted) setVideos([]);
-          return;
+          setVideos([]);
+          return; // Finally block will handle loading state
         }
 
-        // 2. Fetch videos from subscribed channels
+        // 2. Fetch videos from subscribed channels (Firestore 'in' query is limited to 30)
         const videosQuery = query(
             collection(db, "videos"), 
-            where("channelId", "in", subscribedChannelIds.slice(0, 30)), // Firestore 'in' query limited to 30
+            where("channelId", "in", subscribedChannelIds.slice(0, 30)), 
             where("visibility", "==", "public")
         );
         const videosSnapshot = await getDocs(videosQuery);
@@ -72,34 +65,22 @@ export default function SubscriptionsPage() {
             } as Video;
         }));
 
-        if (isMounted) {
-            const sortedVideos = fetchedVideos.filter(v => v.channel).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-            setVideos(sortedVideos);
-        }
+        const sortedVideos = fetchedVideos.filter(v => v.channel).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        setVideos(sortedVideos);
 
       } catch (error) {
         console.error("Error fetching subscribed videos:", error);
-        if (isMounted) {
-            toast({ variant: 'destructive', title: "Could not load subscriptions."});
-            setVideos([]);
-        }
+        toast({ variant: 'destructive', title: "Could not load subscriptions."});
+        setVideos([]);
       } finally {
-        if (isMounted) {
-            clearTimeout(fetchTimeout);
-            setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
     fetchSubscribedVideos();
 
-    return () => {
-        isMounted = false;
-        clearTimeout(fetchTimeout);
-    }
   }, [user, authLoading, toast]);
   
-  // Display loader while auth state is resolving or initial data is being fetched
   if (authLoading || isLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -108,7 +89,6 @@ export default function SubscriptionsPage() {
     );
   }
 
-  // If not loading, and no user, show login prompt
   if (!user) {
      return (
          <div className="flex flex-col items-center justify-center text-center h-96">
@@ -126,7 +106,6 @@ export default function SubscriptionsPage() {
      )
   }
 
-  // If user is logged in, and videos have been fetched (or are empty)
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold font-headline mb-4">Subscriptions</h1>
@@ -137,7 +116,7 @@ export default function SubscriptionsPage() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center text-center h-96">
+         <div className="flex flex-col items-center justify-center text-center h-96">
           <Clapperboard className="w-16 h-16 text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold">No new videos</h2>
           <p className="text-muted-foreground mt-2 max-w-xs">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { VideoCard } from "@/components/video-card";
@@ -10,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, orderBy, getDoc, doc } from "firebase/firestore";
 import { Video, Channel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { mockVideos } from "@/lib/mock-data";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +26,9 @@ export default function HomePage() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          setVideos([]);
-          setLoading(false);
+          // Fallback to mock data if database is empty
+          console.log("No videos found in Firestore, falling back to mock data.");
+          setVideos(mockVideos);
           return;
         }
 
@@ -49,7 +50,8 @@ export default function HomePage() {
 
       } catch (error) {
         console.error("Error fetching videos:", error);
-        setVideos([]); // Set to empty array on error
+        // Fallback to mock data on error as well
+        setVideos(mockVideos);
       } finally {
         setLoading(false);
       }

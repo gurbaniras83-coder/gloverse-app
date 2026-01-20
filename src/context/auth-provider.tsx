@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (loading) {
         setLoading(false);
       }
-    }, 1500);
+    }, 500); // User requested 500ms
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       clearTimeout(startupTimer); // Clear the failsafe timer as we have a response
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       unsubscribe();
       clearTimeout(startupTimer);
     };
-  }, []); // Empty dependency array is correct here
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
