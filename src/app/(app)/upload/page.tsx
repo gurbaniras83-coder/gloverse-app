@@ -148,7 +148,7 @@ export default function UploadPage() {
               <div className="space-y-4">
                   {videoPreview ? (
                       <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
-                          <video src={videoPreview} className="max-h-full" controls />
+                          <video src={videoPreview} className="max-h-full" controls playsInline />
                       </div>
                   ) : (
                     <div 
