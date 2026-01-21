@@ -1,5 +1,5 @@
-
-"use client";
+'use client';
+export const dynamic = 'force-dynamic';
 
 import { useAuth } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -42,15 +42,13 @@ import { ViewsChart } from "@/components/analytics/views-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
-export const dynamic = 'force-dynamic';
-
 const editVideoSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().max(5000).optional(),
 });
 type EditVideoFormValues = z.infer<typeof editVideoSchema>;
 
-const StatCard = ({ title, value, icon: Icon }: { title: string, value: string, icon: React.ElementType }) => (
+const StatCard = ({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) => (
     <div className="p-4 bg-secondary rounded-lg">
         <div className="flex justify-between items-center mb-1">
             <p className="text-sm text-muted-foreground">{title}</p>
@@ -59,7 +57,6 @@ const StatCard = ({ title, value, icon: Icon }: { title: string, value: string, 
         <p className="text-3xl font-bold">{value}</p>
     </div>
 );
-
 
 export default function StudioPage() {
   const { user, loading } = useAuth();
@@ -110,8 +107,9 @@ export default function StudioPage() {
         const views = userVideos.reduce((acc, video) => acc + (video.views || 0), 0);
         const likes = userVideos.reduce((acc, video) => acc + (video.likes || 0), 0);
         const watchTime = userVideos.reduce((acc, video) => {
+            const durationInSeconds = typeof video.duration === 'number' ? video.duration : 0;
             if (video.type === 'long') {
-                return acc + ((video.views || 0) * video.duration);
+                return acc + ((video.views || 0) * durationInSeconds);
             }
             return acc;
         }, 0) / 3600; // in hours
@@ -134,12 +132,12 @@ export default function StudioPage() {
     setSelectedVideo(video);
     form.reset({ title: video.title, description: video.description });
     setIsEditDialogOpen(true);
-  }
+  };
 
   const handleDeleteClick = (video: Video) => {
     setSelectedVideo(video);
     setIsDeleteDialogOpen(true);
-  }
+  };
 
   const onEditSubmit = async (data: EditVideoFormValues) => {
     if (!selectedVideo) return;
@@ -159,17 +157,13 @@ export default function StudioPage() {
     } finally {
         setIsEditing(false);
     }
-  }
+  };
 
   const onDeleteConfirm = async () => {
     if (!selectedVideo) return;
     setIsDeleting(true);
     try {
       await deleteDoc(doc(db, "videos", selectedVideo.id));
-      
-      // Note: Deleting files from Cloudinary requires a signed API request from a backend.
-      // We will only delete the Firestore record for now.
-
       setVideos(prev => prev.filter(v => v.id !== selectedVideo.id));
       toast({ title: "Video deleted successfully" });
     } catch (error) {
@@ -181,7 +175,6 @@ export default function StudioPage() {
       setSelectedVideo(null);
     }
   };
-
 
   if (loading || isLoading || !user?.channel) {
     return (
@@ -224,7 +217,7 @@ export default function StudioPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><DollarSign /> Monetization</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><DollarSign className="w-6 h-6"/> Monetization</CardTitle>
                         <CardDescription>Track your progress towards monetization eligibility.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">

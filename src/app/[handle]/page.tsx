@@ -1,5 +1,5 @@
-
-"use client";
+'use client';
+export const dynamic = 'force-dynamic';
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -20,8 +20,6 @@ import { ShortsShelf } from '@/components/shorts-shelf';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { BottomNav } from '@/components/layout/bottom-nav';
-
-export const dynamic = 'force-dynamic';
 
 function ChannelPageContent() {
     const params = useParams();

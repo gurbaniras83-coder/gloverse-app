@@ -1,5 +1,5 @@
-
-"use client";
+'use client';
+export const dynamic = 'force-dynamic';
 
 import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
@@ -19,8 +19,6 @@ import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, inc
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
-
-export const dynamic = 'force-dynamic';
 
 function WatchPageContent() {
   const searchParams = useSearchParams();
