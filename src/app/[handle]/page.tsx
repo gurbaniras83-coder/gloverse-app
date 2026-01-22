@@ -1,5 +1,4 @@
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -20,6 +19,24 @@ import { ShortsShelf } from '@/components/shorts-shelf';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { BottomNav } from '@/components/layout/bottom-nav';
+
+export async function generateStaticParams() {
+    try {
+        const snapshot = await getDocs(collection(db, "channels"));
+        if (snapshot.empty) {
+            return [];
+        }
+        return snapshot.docs.map(doc => ({
+            handle: doc.data().handle,
+        }));
+    } catch (error) {
+        console.error("Failed to generate static params for channels:", error);
+        // Return an empty array on error to prevent build failure,
+        // although it means no channel pages will be pre-rendered.
+        return [];
+    }
+}
+
 
 function ChannelPageContent() {
     const params = useParams();
