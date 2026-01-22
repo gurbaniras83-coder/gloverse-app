@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatViews, cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import type { Video, Channel } from "@/lib/types";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, increment, writeBatch, setDoc, deleteDoc, limit } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, increment, writeBatch, setDoc, deleteDoc, limit, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
@@ -25,6 +25,9 @@ function WatchPageContent() {
   const videoId = searchParams.get("v");
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  
+  const videoPlayerRef = useRef<{ video: HTMLVideoElement | null }>(null);
+  const historyTrackedRef = useRef(false);
 
   const [video, setVideo] = useState<Video | null | undefined>(undefined);
   const [suggestedVideos, setSuggestedVideos] = useState<Video[]>([]);
@@ -32,6 +35,39 @@ function WatchPageContent() {
   const [isLiked, setIsLiked] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+
+  // History tracking logic
+  useEffect(() => {
+    const videoElement = videoPlayerRef.current?.video;
+    if (!videoElement || !user || !videoId) {
+        return;
+    }
+
+    const handleTimeUpdate = async () => {
+        if (videoElement.currentTime > 10 && !historyTrackedRef.current) {
+            historyTrackedRef.current = true; // Prevent multiple writes
+            videoElement.removeEventListener("timeupdate", handleTimeUpdate);
+            try {
+                const historyRef = doc(db, "users", user.uid, "history", videoId);
+                await setDoc(historyRef, {
+                    videoId: videoId,
+                    watchedAt: serverTimestamp(),
+                }, { merge: true });
+            } catch (error) {
+                console.error("Failed to save to history:", error);
+            }
+        }
+    };
+
+    videoElement.addEventListener("timeupdate", handleTimeUpdate);
+
+    return () => {
+        if (videoElement) {
+            videoElement.removeEventListener("timeupdate", handleTimeUpdate);
+        }
+    };
+  }, [user, videoId, video]);
+
 
   const fetchVideoData = useCallback(async () => {
     if (!videoId) {
@@ -69,6 +105,7 @@ function WatchPageContent() {
 
   // Unique view count logic, runs only on client after hydration
   useEffect(() => {
+    historyTrackedRef.current = false; // Reset history tracking for new video
     if (videoId && video) {
         const viewedVideosKey = 'viewedVideos';
         try {
@@ -225,7 +262,7 @@ function WatchPageContent() {
   return (
     <div className="flex flex-col">
       <div className="sticky top-0 z-10 w-full bg-black">
-        <CustomVideoPlayer src={video.videoUrl} autoPlay />
+        <CustomVideoPlayer ref={videoPlayerRef} src={video.videoUrl} autoPlay />
       </div>
 
       <div className="p-4 space-y-4">

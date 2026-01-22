@@ -7,14 +7,14 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, LogOut, Settings, BarChart2, ChevronRight, History, FolderClock, ThumbsUp, Users, School, Shield } from "lucide-react";
+import { Loader2, LogOut, Settings, BarChart2, ChevronRight, History, FolderClock, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { VideoCard } from "@/components/video-card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Video } from "@/lib/types";
-import { collection, query, where, orderBy, getDocs, limit } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, limit, doc, getDoc } from "firebase/firestore";
 
 export const dynamic = 'force-dynamic';
 
@@ -35,21 +35,47 @@ export default function YouPage() {
       return;
     }
 
-    const fetchRecentVideos = async () => {
+    const fetchHistory = async () => {
       setPageLoading(true);
       try {
-        // This is a stand-in for a real history feature
-        const videosQuery = query(
-          collection(db, "videos"), 
-          where("visibility", "==", "public"),
-          orderBy("createdAt", "desc"), 
-          limit(5)
+        const historyQuery = query(
+          collection(db, "users", user.uid, "history"), 
+          orderBy("watchedAt", "desc"), 
+          limit(10)
         );
-        const snapshot = await getDocs(videosQuery);
-        const videos = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, createdAt: doc.data().createdAt.toDate() } as Video));
+        const historySnapshot = await getDocs(historyQuery);
+        
+        if (historySnapshot.empty) {
+          setHistoryVideos([]);
+          return;
+        }
+
+        const videoPromises = historySnapshot.docs.map(async (historyDoc) => {
+          const videoId = historyDoc.data().videoId;
+          if (!videoId) return null;
+          
+          const videoRef = doc(db, "videos", videoId);
+          const videoSnap = await getDoc(videoRef);
+
+          if (!videoSnap.exists()) return null;
+
+          const videoData = videoSnap.data();
+          const channelRef = doc(db, "channels", videoData.channelId);
+          const channelSnap = await getDoc(channelRef);
+
+          return { 
+            ...videoData, 
+            id: videoSnap.id, 
+            createdAt: videoData.createdAt?.toDate(),
+            channel: channelSnap.exists() ? { id: channelSnap.id, ...channelSnap.data() } : null
+          } as Video;
+        });
+
+        const videos = (await Promise.all(videoPromises)).filter((v): v is Video => v !== null && v.channel !== null);
         setHistoryVideos(videos);
+
       } catch (error) {
-        console.error("Error fetching recent videos for history:", error);
+        console.error("Error fetching history:", error);
         toast({ variant: "destructive", title: "Could not load history." });
         setHistoryVideos([]);
       } finally {
@@ -57,7 +83,7 @@ export default function YouPage() {
       }
     };
 
-    fetchRecentVideos();
+    fetchHistory();
 
   }, [user, authLoading, toast]);
 
@@ -73,7 +99,7 @@ export default function YouPage() {
     }
   };
   
-  if (authLoading || pageLoading) {
+  if (authLoading || (pageLoading && !user)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -122,14 +148,6 @@ export default function YouPage() {
         </div>
       </div>
 
-       <div className="overflow-x-auto no-scrollbar">
-        <div className="flex gap-2">
-            <Button variant="secondary" className="rounded-full flex-shrink-0"><Users className="mr-2"/>Switch account</Button>
-            <Button variant="secondary" className="rounded-full flex-shrink-0"><School className="mr-2"/>Google Account</Button>
-            <Button variant="secondary" className="rounded-full flex-shrink-0"><Shield className="mr-2"/>Turn on Incognito</Button>
-        </div>
-      </div>
-
       <Separator />
 
       {historyVideos.length > 0 ? (
@@ -150,7 +168,7 @@ export default function YouPage() {
           </ScrollArea>
         </div>
       ) : (
-        !pageLoading && <p className="text-center text-muted-foreground">No history available.</p>
+        !pageLoading && <p className="text-center text-muted-foreground py-8">Your watch history will appear here.</p>
       )}
 
       <Separator />

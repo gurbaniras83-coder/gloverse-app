@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, FastForward, Rewind } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { cn } from '@/lib/utils';
@@ -10,7 +10,8 @@ interface CustomVideoPlayerProps {
   autoPlay?: boolean;
 }
 
-export function CustomVideoPlayer({ src, autoPlay = false }: CustomVideoPlayerProps) {
+export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, CustomVideoPlayerProps>(
+  ({ src, autoPlay = false }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -25,6 +26,10 @@ export function CustomVideoPlayer({ src, autoPlay = false }: CustomVideoPlayerPr
   const [showSkipFeedback, setShowSkipFeedback] = useState<'forward' | 'backward' | null>(null);
 
   const lastClickTimeRef = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    video: videoRef.current
+  }));
 
   // --- Core Playback Logic ---
   const togglePlayPause = useCallback(() => {
@@ -255,4 +260,5 @@ export function CustomVideoPlayer({ src, autoPlay = false }: CustomVideoPlayerPr
       </div>
     </div>
   );
-}
+});
+CustomVideoPlayer.displayName = "CustomVideoPlayer";
