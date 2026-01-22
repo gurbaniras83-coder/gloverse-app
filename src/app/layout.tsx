@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import UploadProgressIndicator from "@/components/upload-progress-indicator";
 
 export const metadata = {
-  title: "GloVerse",
+  title: "Gloverse",
   description: "Unleash Your Inner Star",
 };
 

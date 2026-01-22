@@ -10,13 +10,24 @@ import { Video, Channel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mockVideos } from "@/lib/mock-data";
 import { CategoryShelf } from "@/components/category-shelf";
+import { SplashScreen } from "@/components/splash-screen";
 
 export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
+
+  useEffect(() => {
+    const splashShown = sessionStorage.getItem('splashShown');
+    if (splashShown) {
+      setShowSplash(false);
+    } else {
+      sessionStorage.setItem('splashShown', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -59,6 +70,14 @@ export default function HomePage() {
     fetchVideos();
   }, []);
 
+  const handleSplashFinished = () => {
+    setShowSplash(false);
+  };
+  
+  if (showSplash) {
+    return <SplashScreen onFinished={handleSplashFinished} />;
+  }
+
   const filteredVideos = videos.filter(v => {
       if (selectedCategory === "All") return true;
       return v.category === selectedCategory;
@@ -67,9 +86,6 @@ export default function HomePage() {
   const longVideos = filteredVideos.filter(v => v.type === 'long');
   const shorts = filteredVideos.filter(v => v.type === 'short');
 
-  const firstLongVideos = longVideos.slice(0, 2);
-  const remainingLongVideos = longVideos.slice(2);
-  
   if (loading) {
       return (
           <>

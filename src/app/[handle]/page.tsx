@@ -1,24 +1,7 @@
-
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from "@/lib/firebase";
-import type { Channel, Video } from '@/lib/types';
-import { BottomNav } from '@/components/layout/bottom-nav';
 import ChannelPageContent from './client';
-
-export async function generateStaticParams() {
-    try {
-        const snapshot = await getDocs(collection(db, "channels"));
-        if (snapshot.empty) {
-            return [];
-        }
-        return snapshot.docs.map(doc => ({
-            handle: doc.data().handle,
-        }));
-    } catch (error) {
-        console.error("Failed to generate static params for channels:", error);
-        return [];
-    }
-}
+import { notFound } from 'next/navigation';
 
 async function getChannelData(handle: string): Promise<{ channel: any | null, videos: any[] }> {
     if (!handle) return { channel: null, videos: [] };
@@ -40,7 +23,11 @@ async function getChannelData(handle: string): Promise<{ channel: any | null, vi
             : (channelData.createdAt || new Date().toISOString()),
     };
 
-    const videosQuery = query(collection(db, "videos"), where("channelId", "==", serializableChannel.id), where("visibility", "==", "public"));
+    const videosQuery = query(collection(db, "videos"), 
+        where("channelId", "==", serializableChannel.id), 
+        where("visibility", "==", "public"),
+        orderBy("createdAt", "desc")
+    );
     const videosSnapshot = await getDocs(videosQuery);
     
     const videosData = videosSnapshot.docs.map(doc => {
@@ -52,22 +39,18 @@ async function getChannelData(handle: string): Promise<{ channel: any | null, vi
         };
     });
 
-    const sortedVideos = videosData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return { channel: serializableChannel, videos: sortedVideos };
+    return { channel: serializableChannel, videos: videosData };
 }
-
 
 export default async function ChannelRoutePage({ params }: { params: { handle: string }}) {
     const handle = params.handle ? decodeURIComponent(params.handle as string).replace('@', '') : "";
     const { channel, videos } = await getChannelData(handle);
 
+    if (!channel) {
+        notFound();
+    }
+
     return (
-        <div className="relative mx-auto flex min-h-screen w-full max-w-[500px] flex-col bg-background">
-          <main className="flex-1 pb-16">
-            <ChannelPageContent initialChannel={channel} initialVideos={videos} />
-          </main>
-          <BottomNav />
-        </div>
+        <ChannelPageContent initialChannel={channel} initialVideos={videos} />
       );
 }
