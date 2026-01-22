@@ -128,8 +128,6 @@ export default function UploadPage() {
     setVideoPreview(null);
     setThumbnailPreview(null);
     setVideoDuration(0);
-    // Let's redirect to studio to see the new video.
-    router.push('/studio');
   };
 
   return (
