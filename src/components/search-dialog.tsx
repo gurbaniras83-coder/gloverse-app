@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Search } from "lucide-react";
 import { debounce } from "lodash";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, or } from "firebase/firestore";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import type { Video as VideoType, Channel } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useRouter } from "next/navigation";
@@ -32,16 +33,20 @@ export function SearchDialog() {
     setLoading(true);
     try {
       const lowerCaseQuery = sQuery.toLowerCase();
+      const capitalizedQuery = sQuery.charAt(0).toUpperCase() + sQuery.slice(1).toLowerCase();
       
-      // Firestore doesn't support case-insensitive search natively or search across different fields with OR.
-      // A simple approach for a demo is to query with prefixes.
-      // For a production app, a dedicated search service like Algolia or Elasticsearch is recommended.
-      
-      const videoQuery = query(
+      const videoTitleQuery = query(
         collection(db, "videos"),
         where("visibility", "==", "public"),
         where("title", ">=", sQuery),
         where("title", "<=", sQuery + '\uf8ff'),
+        limit(5)
+      );
+
+       const videoCategoryQuery = query(
+        collection(db, "videos"),
+        where("visibility", "==", "public"),
+        where("category", "==", capitalizedQuery),
         limit(5)
       );
 
@@ -52,15 +57,29 @@ export function SearchDialog() {
         limit(3)
       );
       
-      const [videoSnap, channelSnap] = await Promise.all([
-          getDocs(videoQuery),
+      const [videoTitleSnap, videoCategorySnap, channelSnap] = await Promise.all([
+          getDocs(videoTitleQuery),
+          getDocs(videoCategoryQuery),
           getDocs(channelHandleQuery)
       ]);
 
-      const videoResults = videoSnap.docs.map(doc => ({ type: 'video', data: { id: doc.id, ...doc.data() } as VideoType }));
-      const channelResults = channelSnap.docs.map(doc => ({ type: 'channel', data: { id: doc.id, ...doc.data() } as Channel }));
+      const videoResults = new Map<string, VideoType>();
+      videoTitleSnap.docs.forEach(doc => {
+          if (!videoResults.has(doc.id)) {
+              videoResults.set(doc.id, { id: doc.id, ...doc.data() } as VideoType);
+          }
+      });
+      videoCategorySnap.docs.forEach(doc => {
+          if (!videoResults.has(doc.id)) {
+              videoResults.set(doc.id, { id: doc.id, ...doc.data() } as VideoType);
+          }
+      });
+
+      const finalVideoResults = Array.from(videoResults.values()).map(data => ({ type: 'video' as const, data }));
+
+      const channelResults = channelSnap.docs.map(doc => ({ type: 'channel' as const, data: { id: doc.id, ...doc.data() } as Channel }));
       
-      setResults([...channelResults, ...videoResults]);
+      setResults([...channelResults, ...finalVideoResults]);
 
     } catch (e) {
       console.error("Search failed:", e);

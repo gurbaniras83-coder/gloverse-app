@@ -1,3 +1,4 @@
+
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,6 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ViewsChart } from "@/components/analytics/views-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
@@ -239,8 +239,6 @@ export default function StudioPage() {
                         </div>
                     </CardContent>
                 </Card>
-
-                <ViewsChart />
                 
                 {latestVideo && (
                   <Card>
