@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star } from 'lucide-react';
+import Image from 'next/image';
 
 export function SplashScreen({ onFinished }: { onFinished: () => void }) {
   useEffect(() => {
@@ -16,18 +16,17 @@ export function SplashScreen({ onFinished }: { onFinished: () => void }) {
   return (
     <div className="fixed inset-0 z-[101] flex flex-col items-center justify-center bg-[#0f0f0f]">
       <motion.div
-        initial={{ scale: 1, opacity: 1 }}
-        animate={{ scale: [1, 1.2, 1], opacity: [1, 0.8, 1] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        initial={{ scale: 0.95, opacity: 0.8 }}
+        animate={{ scale: [1, 1.03, 1], opacity: [1, 0.9, 1] }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         className="flex flex-col items-center justify-center"
       >
-        <Star className="h-24 w-24 text-primary" fill="currentColor" />
+        <Image src="/logo.png" alt="Gloverse Logo" width={256} height={256} className="w-48 h-48 object-contain" priority />
       </motion.div>
-      <div className="mt-6 text-center">
-        <h1 className="text-3xl font-bold font-headline text-foreground">
-          Gloverse
-        </h1>
-        <p className="mt-2 text-lg text-muted-foreground">Unleash Your Inner Star</p>
+      <div className="mt-4 text-center">
+        <p className="text-lg font-semibold text-white/80 tracking-wider">
+          GloVerse - Unleash Your Inner Star
+        </p>
       </div>
     </div>
   );
