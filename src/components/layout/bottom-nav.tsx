@@ -37,8 +37,8 @@ export function BottomNav() {
   const [isCreateSheetOpen, setCreateSheetOpen] = React.useState(false);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-[500px] items-center justify-around">
+    <nav className="flex-shrink-0 border-t border-border bg-background/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-16 items-center justify-around">
         {navItems.map((item) => {
           if (item.isCentral) {
             return (

@@ -313,7 +313,7 @@ export function ShortsPlayer() {
   return (
     <div
       ref={containerRef}
-      className="h-[calc(100vh-4rem)] w-full snap-y snap-mandatory overflow-y-scroll no-scrollbar"
+      className="h-full w-full snap-y snap-mandatory overflow-y-scroll no-scrollbar"
     >
       {shorts.map((short) => (
         <div key={short.id} data-short-id={short.id} className="h-full w-full snap-start">

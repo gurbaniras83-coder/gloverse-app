@@ -3,7 +3,7 @@ import { AuthProvider } from "@/context/auth-provider";
 import { UploadProvider } from "@/context/upload-provider";
 import { Toaster } from "@/components/ui/toaster";
 import UploadProgressIndicator from "@/components/upload-progress-indicator";
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
   title: "Gloverse",
@@ -11,7 +11,22 @@ export const metadata: Metadata = {
   icons: {
     icon: '/logo.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Gloverse"
+  },
+  other: {
+    'mobile-web-app-capable': 'yes'
+  }
 };
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

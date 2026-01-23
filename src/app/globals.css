@@ -55,3 +55,5 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+#idx-control-center, .idx-bubble, [data-idx-launcher], [class*='idx-'] { display: none !important; visibility: hidden !important; pointer-events: none !important; }
