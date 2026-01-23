@@ -1,12 +1,15 @@
 
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { debounce } from "lodash";
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
+import { auth, GoogleAuthProvider } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +35,7 @@ import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { checkHandleUniqueness, registerUser } from "@/lib/actions";
+import { checkHandleUniqueness, registerUser, getDeviceAccountCount, createChannelForGoogleUser } from "@/lib/actions";
 
 const signupSchema = z.object({
   handle: z.string()
@@ -55,7 +58,18 @@ export default function SignupPage() {
   const [step, setStep] = useState(1);
   const [isPending, startTransition] = useTransition();
   const [handleStatus, setHandleStatus] = useState<"checking" | "unique" | "taken" | "idle">("idle");
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
+  useEffect(() => {
+    const getDeviceId = async () => {
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        setDeviceId(result.visitorId);
+    };
+    getDeviceId();
+  }, []);
+
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -78,18 +92,14 @@ export default function SignupPage() {
       setHandleStatus("checking");
       try {
         const result = await checkHandleUniqueness(handle);
-        // The server action now returns a more detailed error object
         if (result.error) {
            console.error("Handle check failed:", result.error);
-           // Optimistically allow user to proceed on server/connection error.
-           // The final check will happen on form submission.
            setHandleStatus("unique");
         } else {
           setHandleStatus(result.isUnique ? "unique" : "taken");
         }
       } catch (error) {
         console.error("Could not connect to server for handle check:", error);
-        // On any other failure, also allow user to proceed.
         setHandleStatus("unique");
       }
     }, 500),
@@ -116,14 +126,18 @@ export default function SignupPage() {
   const prevStep = () => setStep(s => s - 1);
 
   async function onSubmit(values: z.infer<typeof signupSchema>) {
+    if (!deviceId) {
+        toast({ variant: 'destructive', title: 'Device not identified', description: 'Please wait a moment and try again.'});
+        return;
+    }
     startTransition(async () => {
-      const result = await registerUser(values);
+      const result = await registerUser({ ...values, deviceId });
       if (result.success) {
         toast({
           title: "Account Created!",
           description: "Welcome to Gloverse. You are now logged in.",
         });
-        router.push("/"); // Redirect to home page on success
+        router.push("/");
       } else {
         toast({
           variant: "destructive",
@@ -132,6 +146,43 @@ export default function SignupPage() {
         });
       }
     });
+  }
+
+  const handleGoogleSignUp = async () => {
+    if (!deviceId) {
+        toast({ variant: 'destructive', title: 'Device not identified', description: 'Please wait a moment and try again.'});
+        return;
+    }
+    setIsGoogleLoading(true);
+
+    try {
+        const { count } = await getDeviceAccountCount(deviceId);
+        if (count >= 3) {
+            toast({ variant: "destructive", title: "Account limit reached", description: "You can only create up to 3 accounts per device on GloVerse." });
+            setIsGoogleLoading(false);
+            return;
+        }
+
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        const additionalInfo = getAdditionalUserInfo(result);
+
+        if (additionalInfo?.isNewUser) {
+            await createChannelForGoogleUser({ user: user.toJSON(), deviceId });
+        }
+        
+        toast({ title: "Account Created!", description: "Welcome to Gloverse!" });
+        router.push("/");
+
+    } catch (error: any) {
+        console.error("Google Sign-Up Error", error);
+        if (error.code !== 'auth/popup-closed-by-user') {
+            toast({ variant: "destructive", title: "Google Sign-Up Failed", description: error.message });
+        }
+    } finally {
+        setIsGoogleLoading(false);
+    }
   }
 
   const progress = Math.round((step / 3) * 100);
@@ -150,8 +201,23 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+             {step === 1 && (
+                <div className="space-y-4">
+                    <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isGoogleLoading || !deviceId}>
+                        {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 21.2 177 62.2L353 144.1c-24.3-23.8-59.3-37.8-97-37.8-70.1 0-129.2 57-129.2 128.1s59.1 128.1 129.2 128.1c80.3 0 112-59.3 115.1-90.1H248v-65.1h239.9c1.4 12.8 2.1 26.6 2.1 40.8z"></path></svg>}
+                        Sign up with Google
+                    </Button>
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">Or</span>
+                        </div>
+                    </div>
+                </div>
+            )}
               {step === 1 && (
                 <FormField
                   control={form.control}
@@ -246,9 +312,9 @@ export default function SignupPage() {
                 {step > 1 && <Button type="button" variant="outline" onClick={prevStep} className="w-full">Back</Button>}
                 {step < 3 && <Button type="button" onClick={nextStep} className="w-full" disabled={handleStatus !== 'unique'}>Next</Button>}
                 {step === 3 && (
-                  <Button type="submit" className="w-full" disabled={isPending}>
+                  <Button type="submit" className="w-full" disabled={isPending || !deviceId}>
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Register
+                    Create Account
                   </Button>
                 )}
               </div>

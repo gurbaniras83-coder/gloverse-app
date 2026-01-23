@@ -4,7 +4,8 @@ import {
   getAuth, 
   browserLocalPersistence, 
   initializeAuth,
-  type Auth
+  type Auth,
+  GoogleAuthProvider
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -36,4 +37,4 @@ if (typeof window !== 'undefined') {
 
 const db: Firestore = getFirestore(app);
 
-export { app, auth, db };
+export { app, auth, db, GoogleAuthProvider };

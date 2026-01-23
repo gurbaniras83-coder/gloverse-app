@@ -14,6 +14,7 @@ export type Channel = {
   subscribers: number;
   videoCount?: number;
   createdAt?: string; // ISO String
+  deviceId?: string;
 };
 
 export type Video = {
