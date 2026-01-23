@@ -8,8 +8,10 @@ import type { Metadata, Viewport } from 'next';
 export const metadata: Metadata = {
   title: "Gloverse",
   description: "Unleash Your Inner Star",
+  manifest: "/manifest.json",
   icons: {
     icon: '/logo.png',
+    apple: '/logo.png',
   },
   appleWebApp: {
     capable: true,
@@ -26,6 +28,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#0f0f0f",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-background text-white antialiased no-scrollbar" suppressHydrationWarning>
         <AuthProvider>
             <UploadProvider>
-                <div key="root-layout-container" className="max-w-[480px] mx-auto min-h-screen shadow-2xl border-x border-zinc-800 relative bg-background">
+                <div key="root-layout-container" className="max-w-[480px] mx-auto min-h-dvh shadow-2xl border-x border-zinc-800 relative bg-background">
                     {children}
                 </div>
                 <Toaster />
