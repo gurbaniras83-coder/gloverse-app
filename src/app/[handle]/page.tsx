@@ -3,8 +3,21 @@ import { db } from "@/lib/firebase";
 import ChannelPageContent from './client';
 import { notFound } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
+export async function generateStaticParams() {
+    try {
+        const snapshot = await getDocs(collection(db, "channels"));
+        if (snapshot.empty) {
+            console.warn("No channels found to generate static params.");
+            return [];
+        }
+        return snapshot.docs.map(doc => ({
+            handle: doc.data().handle,
+        }));
+    } catch (error) {
+        console.error("Error fetching channels for generateStaticParams:", error);
+        return [];
+    }
+}
 
 async function getChannelData(handle: string): Promise<{ channel: any | null, videos: any[] }> {
     if (!handle) return { channel: null, videos: [] };
