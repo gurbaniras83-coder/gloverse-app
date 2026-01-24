@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Channel, Video } from '@/lib/types';
-import { Loader2, BarChart2, Edit, Bell } from 'lucide-react';
+import { BarChart2, Edit, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatViews } from '@/lib/utils';
@@ -18,11 +18,42 @@ import Link from 'next/link';
 import { ShortsShelf } from '@/components/shorts-shelf';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ChannelPageContentProps {
     initialChannel: any | null;
     initialVideos: any[];
 }
+
+function ChannelPageSkeleton() {
+    return (
+        <div className="flex flex-col animate-pulse">
+            <Skeleton className="relative w-full aspect-[3/1] bg-secondary" />
+
+            <div className="p-4 flex flex-col items-center text-center -mt-12 space-y-2">
+                <Skeleton className="h-24 w-24 rounded-full border-4 border-background" />
+                <div>
+                    <Skeleton className="h-9 w-48 mx-auto rounded-md" />
+                    <Skeleton className="h-4 w-64 mx-auto rounded-md mt-2" />
+                </div>
+                <Skeleton className="h-4 w-80 mx-auto rounded-md mt-1" />
+            </div>
+            
+            <div className="px-4 py-2 flex items-center justify-center gap-2">
+                <Skeleton className="h-10 flex-1 rounded-full" />
+            </div>
+
+            <div className="w-full mt-4 px-4">
+                <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+            <div className="p-4 mt-4 space-y-6">
+                 <Skeleton className="h-4 w-24 rounded-md" />
+                 <Skeleton className="w-full aspect-video rounded-xl" />
+            </div>
+        </div>
+    );
+}
+
 
 export default function ChannelPageContent({ initialChannel, initialVideos }: ChannelPageContentProps) {
     const { user, loading: authLoading } = useAuth();
@@ -99,8 +130,8 @@ export default function ChannelPageContent({ initialChannel, initialVideos }: Ch
         }
     };
 
-    if (channel === undefined || (authLoading && !channel)) {
-        return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (channel === undefined) {
+        return <ChannelPageSkeleton />;
     }
 
     if (channel === null) {

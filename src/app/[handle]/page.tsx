@@ -3,25 +3,8 @@ import { db } from "@/lib/firebase";
 import ChannelPageContent from './client';
 import { notFound } from 'next/navigation';
 
-export async function generateStaticParams() {
-    try {
-        const snapshot = await getDocs(collection(db, "channels"));
-        if (snapshot.empty) {
-            console.warn("No channels found to generate static params.");
-            return [];
-        }
-        // Filter out any documents that might not have a valid handle
-        return snapshot.docs
-            .map(doc => doc.data().handle)
-            .filter(handle => typeof handle === 'string' && handle.length > 0)
-            .map(handle => ({
-                handle: handle,
-            }));
-    } catch (error) {
-        console.error("Error fetching channels for generateStaticParams:", error);
-        return [];
-    }
-}
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 async function getChannelData(handle: string): Promise<{ channel: any | null, videos: any[] }> {
     if (!handle) return { channel: null, videos: [] };
@@ -40,7 +23,7 @@ async function getChannelData(handle: string): Promise<{ channel: any | null, vi
         ...channelData,
         createdAt: (channelData.createdAt && (channelData.createdAt as any).toDate) 
             ? (channelData.createdAt as any).toDate().toISOString() 
-            : (channelData.createdAt || new Date().toISOString()),
+            : new Date(channelData.createdAt || Date.now()).toISOString(),
     };
 
     const videosQuery = query(collection(db, "videos"), 
@@ -64,6 +47,11 @@ async function getChannelData(handle: string): Promise<{ channel: any | null, vi
 
 export default async function ChannelRoutePage({ params }: { params: { handle: string }}) {
     const handle = params.handle ? decodeURIComponent(params.handle as string).replace('@', '') : "";
+    
+    if (!handle) {
+      notFound();
+    }
+
     const { channel, videos } = await getChannelData(handle);
 
     if (!channel) {
