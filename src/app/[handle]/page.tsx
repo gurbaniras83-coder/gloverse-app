@@ -10,9 +10,13 @@ export async function generateStaticParams() {
             console.warn("No channels found to generate static params.");
             return [];
         }
-        return snapshot.docs.map(doc => ({
-            handle: doc.data().handle,
-        }));
+        // Filter out any documents that might not have a valid handle
+        return snapshot.docs
+            .map(doc => doc.data().handle)
+            .filter(handle => typeof handle === 'string' && handle.length > 0)
+            .map(handle => ({
+                handle: handle,
+            }));
     } catch (error) {
         console.error("Error fetching channels for generateStaticParams:", error);
         return [];
