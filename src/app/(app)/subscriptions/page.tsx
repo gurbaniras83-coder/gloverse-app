@@ -11,8 +11,6 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
-export const dynamic = 'force-dynamic';
-
 export default function SubscriptionsPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();

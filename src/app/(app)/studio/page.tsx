@@ -1,6 +1,5 @@
 
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { useAuth } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";

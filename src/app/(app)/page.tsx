@@ -12,8 +12,6 @@ import { mockVideos } from "@/lib/mock-data";
 import { CategoryShelf } from "@/components/category-shelf";
 import { SplashScreen } from "@/components/splash-screen";
 
-export const dynamic = 'force-dynamic';
-
 export default function HomePage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);

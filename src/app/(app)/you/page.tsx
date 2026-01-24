@@ -16,8 +16,6 @@ import { Separator } from "@/components/ui/separator";
 import { Video } from "@/lib/types";
 import { collection, query, orderBy, getDocs, limit, doc, getDoc } from "firebase/firestore";
 
-export const dynamic = 'force-dynamic';
-
 export default function YouPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
