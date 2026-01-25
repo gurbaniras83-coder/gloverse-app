@@ -4,7 +4,6 @@ import ChannelPageContent from './client';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 async function getChannelData(handle: string): Promise<{ channel: any | null, videos: any[] }> {
     if (!handle) return { channel: null, videos: [] };
