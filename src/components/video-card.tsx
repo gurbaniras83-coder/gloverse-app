@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -98,7 +99,7 @@ export function VideoCard({ video }: VideoCardProps) {
                 {video.channel.fullName}
               </p>
             </Link>
-            <p>
+            <p suppressHydrationWarning>
               {formatViews(video.views)} views &middot; {timeAgo}
             </p>
           </div>
@@ -114,3 +115,5 @@ export function VideoCard({ video }: VideoCardProps) {
     </div>
   );
 }
+
+    

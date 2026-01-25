@@ -267,7 +267,7 @@ function WatchPageContent() {
 
       <div className="p-4 space-y-4">
         <h1 className="text-xl font-bold leading-tight">{video.title}</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground" suppressHydrationWarning>
           {formatViews(video.views)} views &middot; {timeAgo}
         </p>
 
@@ -280,7 +280,7 @@ function WatchPageContent() {
               </Avatar>
               <div>
                 <p className="font-semibold">{video.channel.fullName}</p>
-                <p className="text-sm text-muted-foreground">{formatViews(video.channel.subscribers)} subscribers</p>
+                <p className="text-sm text-muted-foreground" suppressHydrationWarning>{formatViews(video.channel.subscribers)} subscribers</p>
               </div>
             </Link>
             {user?.channel?.id !== video.channel.id && (
@@ -305,7 +305,7 @@ function WatchPageContent() {
             disabled={!user || isInteracting}
           >
             <ThumbsUp className={cn("mr-2 h-5 w-5", isLiked && "fill-primary text-primary")} />
-            {formatViews(likeCount)}
+            <span suppressHydrationWarning>{formatViews(likeCount)}</span>
           </Button>
         </div>
         
@@ -315,11 +315,11 @@ function WatchPageContent() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Views</p>
-                <p className="font-bold text-lg">{formatViews(video.views)}</p>
+                <p className="font-bold text-lg" suppressHydrationWarning>{formatViews(video.views)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Likes</p>
-                <p className="font-bold text-lg">{formatViews(likeCount)}</p>
+                <p className="font-bold text-lg" suppressHydrationWarning>{formatViews(likeCount)}</p>
               </div>
             </div>
             <Button asChild variant="outline" className="w-full mt-4">
@@ -382,3 +382,5 @@ export default function WatchPage() {
     </Suspense>
   );
 }
+
+    

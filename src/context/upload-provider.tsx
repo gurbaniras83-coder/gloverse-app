@@ -76,16 +76,16 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
                 } else {
                     try {
                         const response = JSON.parse(xhr.responseText);
-                        reject(new Error(`Cloudinary error: ${response.error?.message || xhr.statusText}`));
+                        reject(new Error(`Upload failed: ${response.error?.message || xhr.statusText}`));
                     } catch {
-                         reject(new Error(`Cloudinary error: ${xhr.statusText}`));
+                         reject(new Error(`Upload failed: ${xhr.statusText}`));
                     }
                 }
                  if (isVideo) setUploadTask(null);
             };
             
             xhr.onerror = () => {
-                reject(new Error('Network error during upload.'));
+                reject(new Error('Network error during upload. Please check your connection and try again.'));
                 if (isVideo) setUploadTask(null);
             };
 
@@ -107,7 +107,8 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
 
     const startUpload = async (videoFile: File, thumbnailFile: File, metadata: any, videoDuration: number) => {
         if (!user || !user.channel) {
-            toast({ variant: 'destructive', title: 'You must be logged in to upload.' });
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in with a valid channel to upload.' });
+            setIsUploading(false);
             return;
         }
 
@@ -148,12 +149,11 @@ export const UploadProvider = ({ children }: { children: ReactNode }) => {
             router.push('/studio');
 
         } catch (error: any) {
-            alert(error.message); // As requested
             console.error("Upload process failed:", error);
             toast({
                 variant: 'destructive',
                 title: 'Upload Failed',
-                description: "There was a problem uploading your video. " + error.message,
+                description: error.message || "An unknown error occurred.",
             });
         } finally {
             setIsUploading(false);
@@ -181,3 +181,5 @@ export const useUpload = () => {
     }
     return context;
 };
+
+    

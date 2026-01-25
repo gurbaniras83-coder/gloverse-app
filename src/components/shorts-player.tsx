@@ -60,6 +60,29 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
     return () => unsubscribe();
   }, [user, short.id]);
 
+  // View count logic
+  useEffect(() => {
+    if (isIntersecting && short.id) {
+        const viewTimeout = setTimeout(() => {
+            const viewedShortsKey = 'viewedShorts';
+            try {
+                let viewedShorts = JSON.parse(localStorage.getItem(viewedShortsKey) || '[]');
+                if (!viewedShorts.includes(short.id)) {
+                    const videoRef = doc(db, "videos", short.id);
+                    updateDoc(videoRef, { views: increment(1) });
+                    
+                    viewedShorts.push(short.id);
+                    localStorage.setItem(viewedShortsKey, JSON.stringify(viewedShorts));
+                }
+            } catch (error) {
+                console.error("Error updating view count:", error);
+            }
+        }, 3000); // 3 seconds
+
+        return () => clearTimeout(viewTimeout);
+    }
+  }, [isIntersecting, short.id]);
+
 
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -175,13 +198,13 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
       <div className="absolute bottom-4 right-2 flex flex-col items-center gap-4 text-white">
         <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={handleLikeToggle} disabled={!user || isInteracting}>
           <Heart className={cn("h-8 w-8 transition-colors", isLiked && "fill-red-500 text-red-500")} />
-          <span className="text-xs font-semibold">{formatViews(likeCount)}</span>
+          <span className="text-xs font-semibold" suppressHydrationWarning>{formatViews(likeCount)}</span>
         </Button>
         <Sheet onOpenChange={(open) => { if (open && isPlaying) videoRef.current?.pause(); }}>
           <SheetTrigger asChild>
             <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
               <MessageCircle className="h-8 w-8" />
-              <span className="text-xs font-semibold">{formatViews(commentCount)}</span>
+              <span className="text-xs font-semibold" suppressHydrationWarning>{formatViews(commentCount)}</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[80dvh] max-w-[500px] mx-auto flex flex-col p-0 bg-background border-t-0 rounded-t-2xl">
@@ -330,3 +353,5 @@ export function ShortsPlayer() {
     </div>
   );
 }
+
+    

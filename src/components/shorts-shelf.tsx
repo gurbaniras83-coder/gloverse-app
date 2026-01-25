@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Video } from "@/lib/types";
@@ -17,13 +18,13 @@ export function ShortsShelf({ shorts }: { shorts: Video[] }) {
             <ScrollArea className="w-full whitespace-nowrap">
                 <div className="flex w-max space-x-3 px-4">
                     {shorts.map(short => (
-                        <div key={short.id} className="w-40 cursor-pointer" onClick={() => router.push('/shorts')}>
+                        <div key={short.id} className="w-40 cursor-pointer" onClick={() => router.push(`/shorts#${short.id}`)}>
                             <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl">
                                 <Image src={short.thumbnailUrl} alt={short.title} fill className="object-cover" data-ai-hint="short video thumbnail"/>
                             </div>
                             <div className="mt-2">
                                 <h3 className="text-sm font-semibold truncate">{short.title}</h3>
-                                <p className="text-xs text-muted-foreground">{formatViews(short.views)} views</p>
+                                <p className="text-xs text-muted-foreground" suppressHydrationWarning>{formatViews(short.views)} views</p>
                             </div>
                         </div>
                     ))}
@@ -34,3 +35,5 @@ export function ShortsShelf({ shorts }: { shorts: Video[] }) {
         </div>
     );
 }
+
+    

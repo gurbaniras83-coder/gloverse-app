@@ -161,7 +161,7 @@ export default function ChannelPageContent({ initialChannel, initialVideos }: Ch
                 </Avatar>
                 <div>
                     <h1 className="text-3xl font-bold font-headline">{channel.fullName}</h1>
-                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground" suppressHydrationWarning>
                         <span>@{channel.handle}</span>
                         <span>&middot;</span>
                         <span>{formatViews(channel.subscribers)} subscribers</span>
@@ -229,7 +229,7 @@ export default function ChannelPageContent({ initialChannel, initialVideos }: Ch
                                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
                                      <div className="absolute bottom-0 left-0 p-2 text-white bg-gradient-to-t from-black/60 to-transparent w-full">
                                         <p className="text-sm font-semibold truncate">{short.title}</p>
-                                        <p className="text-xs">{formatViews(short.views)} views</p>
+                                        <p className="text-xs" suppressHydrationWarning>{formatViews(short.views)} views</p>
                                      </div>
                                  </Link>
                             ))}
@@ -244,9 +244,11 @@ export default function ChannelPageContent({ initialChannel, initialVideos }: Ch
                      <p className="text-xs">
                         Information
                      </p>
-                     {joinedDate && <p className="pt-4">Joined on {joinedDate}</p>}
+                     {joinedDate && <p className="pt-4" suppressHydrationWarning>Joined on {joinedDate}</p>}
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
+
+    
