@@ -217,38 +217,37 @@ export default function SignupPage() {
                             <span className="bg-background px-2 text-muted-foreground">Or</span>
                         </div>
                     </div>
+                     <FormField
+                      control={form.control}
+                      name="handle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Handle</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                placeholder="your_handle" 
+                                {...field} 
+                                onChange={handleHandleChange}
+                                autoCapitalize="none"
+                                autoComplete="off"
+                                autoCorrect="off"
+                              />
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                {handleStatus === 'checking' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                {handleStatus === 'unique' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                                {handleStatus === 'taken' && <XCircle className="h-4 w-4 text-destructive" />}
+                              </div>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                           {handleStatus === 'taken' && <p className="text-sm font-medium text-destructive">This handle is already taken.</p>}
+                        </FormItem>
+                      )}
+                    />
                 </div>
               )}
-              {step === 1 && (
-                <FormField
-                  control={form.control}
-                  name="handle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Handle</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input 
-                            placeholder="your_handle" 
-                            {...field} 
-                            onChange={handleHandleChange}
-                            autoCapitalize="none"
-                            autoComplete="off"
-                            autoCorrect="off"
-                          />
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                            {handleStatus === 'checking' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                            {handleStatus === 'unique' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                            {handleStatus === 'taken' && <XCircle className="h-4 w-4 text-destructive" />}
-                          </div>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                       {handleStatus === 'taken' && <p className="text-sm font-medium text-destructive">This handle is already taken.</p>}
-                    </FormItem>
-                  )}
-                />
-              )}
+              
               {step === 2 && (
                 <>
                   <FormField
