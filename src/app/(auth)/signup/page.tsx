@@ -201,8 +201,9 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-             {step === 1 && (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {step === 1 && (
                 <div className="space-y-4">
                     <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isGoogleLoading || !deviceId}>
                         {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 21.2 177 62.2L353 144.1c-24.3-23.8-59.3-37.8-97-37.8-70.1 0-129.2 57-129.2 128.1s59.1 128.1 129.2 128.1c80.3 0 112-59.3 115.1-90.1H248v-65.1h239.9c1.4 12.8 2.1 26.6 2.1 40.8z"></path></svg>}
@@ -217,7 +218,7 @@ export default function SignupPage() {
                         </div>
                     </div>
                 </div>
-            )}
+              )}
               {step === 1 && (
                 <FormField
                   control={form.control}
@@ -333,4 +334,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
