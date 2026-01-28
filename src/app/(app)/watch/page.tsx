@@ -19,6 +19,7 @@ import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, inc
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
+import { AdBanner } from "@/components/ad-banner";
 
 function WatchPageContent() {
   const searchParams = useSearchParams();
@@ -309,6 +310,8 @@ function WatchPageContent() {
           </Button>
         </div>
         
+        <AdBanner className="my-4" />
+
         {user?.channel?.id === video.channel?.id && (
           <div className="p-3 rounded-lg bg-secondary border border-primary/50">
             <h3 className="text-lg font-semibold mb-2">Your Video Stats</h3>
@@ -382,5 +385,3 @@ export default function WatchPage() {
     </Suspense>
   );
 }
-
-    

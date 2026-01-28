@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Video } from "@/lib/types";
-import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { formatViews } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -30,22 +30,34 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose
+  DialogClose,
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const editVideoSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   description: z.string().max(5000).optional(),
 });
 type EditVideoFormValues = z.infer<typeof editVideoSchema>;
+
+const monetizationSchema = z.object({
+  fullName: z.string().min(2, "Full name is required."),
+  phoneNumber: z.string().min(10, "A valid phone number is required."),
+  email: z.string().email(),
+  agreement: z.boolean().refine(val => val === true, {
+    message: "You must agree to the terms."
+  })
+});
+type MonetizationFormValues = z.infer<typeof monetizationSchema>;
+
 
 const StatCard = ({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) => (
     <div className="p-4 bg-secondary rounded-lg">
@@ -70,13 +82,35 @@ export default function StudioPage() {
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
 
-  const form = useForm<EditVideoFormValues>({
+  const editForm = useForm<EditVideoFormValues>({
     resolver: zodResolver(editVideoSchema),
   });
+  
+  const applyForm = useForm<MonetizationFormValues>({
+    resolver: zodResolver(monetizationSchema),
+    defaultValues: {
+      fullName: user?.channel?.fullName || "",
+      email: user?.email || "",
+      agreement: false,
+    }
+  });
+  
+  useEffect(() => {
+    if(user) {
+        applyForm.reset({
+             fullName: user.channel?.fullName || "",
+             email: user.email || "",
+             agreement: false,
+        })
+    }
+  }, [user, applyForm]);
 
   useEffect(() => {
     if (loading) return;
@@ -123,13 +157,24 @@ export default function StudioPage() {
         setIsLoading(false);
       }
     };
+    
+    const checkApplicationStatus = async () => {
+      if (!user?.uid) return;
+      const appRef = doc(db, "monetization_applications", user.uid);
+      const appSnap = await getDoc(appRef);
+      if (appSnap.exists()) {
+        setApplicationStatus(appSnap.data().status);
+      }
+    };
+
 
     fetchVideos();
+    checkApplicationStatus();
   }, [user, loading, router]);
 
   const handleEditClick = (video: Video) => {
     setSelectedVideo(video);
-    form.reset({ title: video.title, description: video.description });
+    editForm.reset({ title: video.title, description: video.description });
     setIsEditDialogOpen(true);
   };
 
@@ -155,6 +200,29 @@ export default function StudioPage() {
         toast({ variant: "destructive", title: "Failed to update video." });
     } finally {
         setIsEditing(false);
+    }
+  };
+
+  const onApplySubmit = async (data: MonetizationFormValues) => {
+    if (!user || !user.channel) return;
+    setIsSubmitting(true);
+    try {
+      const appRef = doc(db, "monetization_applications", user.uid);
+      await setDoc(appRef, {
+        ...data,
+        channelId: user.channel.id,
+        userId: user.uid,
+        status: "pending",
+        submittedAt: serverTimestamp(),
+      });
+      setApplicationStatus("pending");
+      setIsApplyDialogOpen(false);
+      toast({ title: "Application Submitted!", description: "We will review your application and get back to you soon."});
+    } catch (e) {
+      console.error("Failed to submit application", e);
+      toast({ variant: "destructive", title: "Submission Failed", description: "An unexpected error occurred." });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -184,6 +252,13 @@ export default function StudioPage() {
   }
 
   const latestVideo = videos.length > 0 ? videos[0] : null;
+  const isEligible = user.channel.subscribers >= 300 && totalWatchTime >= 500;
+  
+  const getButtonText = () => {
+    if (applicationStatus === 'pending') return 'Application Pending';
+    if (applicationStatus === 'approved') return 'Monetization Active';
+    return 'Apply Now';
+  }
 
   return (
     <>
@@ -236,6 +311,12 @@ export default function StudioPage() {
                             <Progress value={(totalWatchTime / 500) * 100} className="h-2"/>
                             <p className="text-xs text-muted-foreground">500 valid public watch hours required. This is an estimate based on views and video duration.</p>
                         </div>
+                         <div className="mt-6 flex flex-col items-center">
+                            <Button onClick={() => setIsApplyDialogOpen(true)} disabled={!isEligible || !!applicationStatus} className="w-full">
+                                {getButtonText()}
+                            </Button>
+                            {!isEligible && <p className="text-xs text-muted-foreground mt-2 text-center">You are not yet eligible to apply. Keep creating!</p>}
+                         </div>
                     </CardContent>
                 </Card>
                 
@@ -316,16 +397,16 @@ export default function StudioPage() {
                 <DialogTitle>Edit Video</DialogTitle>
                 <DialogDescription>Make changes to your video's details.</DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onEditSubmit)} className="space-y-4">
-                    <FormField control={form.control} name="title" render={({ field }) => (
+            <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                    <FormField control={editForm.control} name="title" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Title</FormLabel>
                             <FormControl><Input {...field} /></FormControl>
                             <FormMessage/>
                         </FormItem>
                     )} />
-                    <FormField control={form.control} name="description" render={({ field }) => (
+                    <FormField control={editForm.control} name="description" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Description</FormLabel>
                             <FormControl><Textarea {...field} className="h-32" /></FormControl>
@@ -335,6 +416,68 @@ export default function StudioPage() {
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
                         <Button type="submit" disabled={isEditing}>{isEditing && <Loader2 className="animate-spin mr-2"/>}Save Changes</Button>
+                    </DialogFooter>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Monetization Dialog */}
+      <Dialog open={isApplyDialogOpen} onOpenChange={setIsApplyDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Apply for Gloverse Partner Program</DialogTitle>
+                <DialogDescription>Review your details and agree to the terms to submit your application.</DialogDescription>
+            </DialogHeader>
+            <Form {...applyForm}>
+                <form onSubmit={applyForm.handleSubmit(onApplySubmit)} className="space-y-4">
+                    <FormField control={applyForm.control} name="fullName" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Full Legal Name</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )} />
+                     <FormField control={applyForm.control} name="phoneNumber" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl><Input type="tel" {...field} placeholder="+1 (555) 123-4567" /></FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )} />
+                     <FormField control={applyForm.control} name="email" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Contact Email</FormLabel>
+                            <FormControl><Input {...field} readOnly /></FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )} />
+                    <FormField
+                      control={applyForm.control}
+                      name="agreement"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Agree to terms and conditions
+                            </FormLabel>
+                            <FormDescription>
+                              You agree to the GloVerse Partner Terms and Copyright Policies.
+                            </FormDescription>
+                             <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                        <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
+                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="animate-spin mr-2"/>}Submit Application</Button>
                     </DialogFooter>
                 </form>
             </Form>
