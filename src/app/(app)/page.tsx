@@ -1,3 +1,4 @@
+
 "use client";
 
 import { VideoCard } from "@/components/video-card";
@@ -5,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import React, { useState, useEffect } from "react";
 import { ShortsShelf } from "@/components/shorts-shelf";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, orderBy, getDoc, doc } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, getDoc, doc, limit } from "firebase/firestore";
 import { Video, Channel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mockVideos } from "@/lib/mock-data";
@@ -32,7 +33,7 @@ export default function HomePage() {
       setLoading(true);
       try {
         const videosRef = collection(db, "videos");
-        const q = query(videosRef, where("visibility", "==", "public"), orderBy("createdAt", "desc"));
+        const q = query(videosRef, where("visibility", "==", "public"), orderBy("createdAt", "desc"), limit(10));
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
