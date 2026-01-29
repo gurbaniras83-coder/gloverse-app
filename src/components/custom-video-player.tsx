@@ -7,6 +7,7 @@ import { Slider } from './ui/slider';
 import { cn } from '@/lib/utils';
 import { adConfig } from '@/lib/adConfig';
 import { Button } from './ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 // Define google.ima types locally to avoid installing @types/google.ima
 declare global {
@@ -53,6 +54,7 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
   const [prerollPlayed, setPrerollPlayed] = useState(false);
 
   const lastClickTimeRef = useRef(0);
+  const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
     video: videoRef.current
@@ -82,11 +84,19 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
   }
 
   const onAdError = useCallback((adErrorEvent: any) => {
-      console.error('Ad Error: ' + adErrorEvent.getError().toString());
-      imaRefs.current.adsManager?.destroy();
+      const error = adErrorEvent.getError();
+      console.error('Ad Error: ' + error.toString());
+      toast({
+          variant: "destructive",
+          title: "Ad Playback Error",
+          description: `Could not load ad. Error: ${error.getMessage()}`,
+      });
+      if (imaRefs.current.adsManager) {
+        imaRefs.current.adsManager.destroy();
+      }
       setIsAdPlaying(false);
       playContent();
-  }, [playContent]);
+  }, [playContent, toast]);
 
   const onContentPauseRequested = useCallback(() => {
       setIsAdPlaying(true);
@@ -110,8 +120,10 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
       const adData = adProgressData.getAdData();
       const remaining = Math.ceil(adData.remainingTime);
       
-      if (adData.skippable && adData.skippableTimeOffset > 0) {
-          const skipTime = Math.ceil(adData.skippableTimeOffset - adData.currentTime);
+      // The skippable time is 5s for the sample tag.
+      const skippableTime = 5;
+      if (adData.skippable) {
+          const skipTime = Math.ceil(skippableTime - adData.currentTime);
           if (skipTime > 0) {
               setAdCountdown(`Skip in ${skipTime}`);
           } else {
@@ -508,5 +520,3 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
   );
 });
 CustomVideoPlayer.displayName = "CustomVideoPlayer";
-
-    

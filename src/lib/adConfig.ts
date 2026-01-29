@@ -46,19 +46,23 @@ export const adConfig = {
   nativeAdUnit: process.env.NEXT_PUBLIC_ADMOB_NATIVE_ID || "ca-app-pub-1748016542298496/4283976199",
 
 
-  // --- The following are for Google Ad Manager (web video ads) and are placeholders ---
+  // --- The following are for Google Ad Manager (web video ads) ---
   
   /**
-   * Video Ad Unit ID for Pre-roll ads (played before a video).
-   * From Google Ad Manager.
-   * Example: /123456789/preroll
+   * Google Ad Manager (GAM) Video Ad Unit for **Pre-roll** ads.
+   * **IMPORTANT**: This must be a GAM ad unit path, not an AdMob ID.
+   * Used for skippable ads that play before video content.
+   * Sourced from NEXT_PUBLIC_GAM_PREROLL_AD_UNIT.
+   * Example: /123456789/web/preroll
    */
   preRollAdUnit: process.env.NEXT_PUBLIC_GAM_PREROLL_AD_UNIT || "/6499/example/preroll",
   
   /**
-   * Video Ad Unit ID for Mid-roll ads (played during a video).
-   * From Google Ad Manager.
-   * Example: /123456789/midroll
+   * Google Ad Manager (GAM) Video Ad Unit for **Mid-roll** ads.
+   * **IMPORTANT**: This must be a GAM ad unit path, not an AdMob ID.
+   * Used for ads that play during long-form video content.
+   * Sourced from NEXT_PUBLIC_GAM_MIDROLL_AD_UNIT.
+   * Example: /123456789/web/midroll
    */
   midRollAdUnit: process.env.NEXT_PUBLIC_GAM_MIDROLL_AD_UNIT || "/6499/example/midroll",
 
