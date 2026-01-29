@@ -89,6 +89,9 @@ export default function HomePage() {
   if (loading) {
       return (
           <>
+            <div className="p-4">
+              <AdBanner />
+            </div>
             <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
             <div className="p-4 space-y-6">
                 <Skeleton className="w-full aspect-video rounded-xl" />
@@ -115,10 +118,10 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col">
-      <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
       <div className="p-4">
         <AdBanner />
       </div>
+      <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
       <div className="flex flex-col">
         
         {longVideos.length > 0 && (
