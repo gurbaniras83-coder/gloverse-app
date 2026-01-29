@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useEffect } from 'react';
 import { adConfig } from '@/lib/adConfig';
 import { cn } from '@/lib/utils';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 declare global {
     interface Window {
@@ -13,10 +14,15 @@ declare global {
 
 export function BannerAd({ className }: { className?: string }) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const adSlotId = adConfig.homeBannerAdUnit.split('/')[1];
 
+    // Create a key that changes with the full URL, including search parameters.
+    // This is crucial for SPA navigation where the pathname might not change, but the content does.
+    const urlKey = `${pathname}?${searchParams.toString()}`;
+
     useEffect(() => {
-        // This effect re-runs on route changes (because of the `pathname` dependency),
+        // This effect re-runs on route changes (because of the `urlKey` dependency),
         // signaling AdSense to look for new or replaced ad slots on the page.
         try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -25,7 +31,7 @@ export function BannerAd({ className }: { className?: string }) {
             // It indicates that the ad container was re-rendered before an ad could be fetched.
             console.error("AdSense execution error: ", err);
         }
-    }, [pathname]);
+    }, [urlKey]); // Depend on the full URL key
 
     if (!adSlotId) {
         return (
@@ -43,9 +49,9 @@ export function BannerAd({ className }: { className?: string }) {
              <span className="text-xs font-semibold self-start mb-1" style={{ color: '#FFD700' }}>Sponsored</span>
              <div className="w-full flex items-center justify-center bg-secondary rounded-lg min-h-[100px]">
                 <ins
-                    // By using the pathname in the key, we force React to re-create this DOM element on navigation.
-                    // This is crucial for AdSense to recognize it as a new ad slot in a single-page app.
-                    key={pathname}
+                    // By using a key that includes search params, we force React to re-create this DOM element
+                    // even when only the query string changes (e.g., navigating from one video to another).
+                    key={urlKey}
                     className="adsbygoogle"
                     style={{ display: 'inline-block', width: '320px', height: '100px' }}
                     data-ad-client={adConfig.adsensePublisherId}
