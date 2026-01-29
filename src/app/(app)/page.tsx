@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { mockVideos } from "@/lib/mock-data";
 import { CategoryShelf } from "@/components/category-shelf";
 import { SplashScreen } from "@/components/splash-screen";
-import { AdBanner } from "@/components/ad-banner";
+import { BannerAd } from "@/components/ads/BannerAd";
 
 export default function HomePage() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -90,7 +90,7 @@ export default function HomePage() {
       return (
           <>
             <div className="p-4">
-              <AdBanner />
+              <BannerAd />
             </div>
             <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
             <div className="p-4 space-y-6">
@@ -119,7 +119,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       <div className="p-4">
-        <AdBanner />
+        <BannerAd />
       </div>
       <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
       <div className="flex flex-col">

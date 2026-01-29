@@ -19,7 +19,7 @@ import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, inc
 import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
-import { AdBanner } from "@/components/ad-banner";
+import { BannerAd } from "@/components/ads/BannerAd";
 
 function WatchPageContent() {
   const searchParams = useSearchParams();
@@ -310,7 +310,9 @@ function WatchPageContent() {
           </Button>
         </div>
         
-        <AdBanner className="my-4" />
+        <div className="my-4">
+          <BannerAd />
+        </div>
 
         {user?.channel?.id === video.channel?.id && (
           <div className="p-3 rounded-lg bg-secondary border border-primary/50">
