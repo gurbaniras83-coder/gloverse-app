@@ -225,8 +225,62 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
   );
 }
 
+interface AdCardProps {
+  onSkip: () => void;
+  isIntersecting: boolean;
+}
+
+function AdCard({ onSkip, isIntersecting }: AdCardProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [showSkip, setShowSkip] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      if (isIntersecting) {
+        video.currentTime = 0;
+        video.play().catch(console.error);
+        const timer = setTimeout(() => {
+          setShowSkip(true);
+        }, 3000);
+        return () => clearTimeout(timer);
+      } else {
+        video.pause();
+        setShowSkip(false);
+      }
+    }
+  }, [isIntersecting]);
+
+  const handleSkipClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSkip();
+  }
+
+  return (
+    <div className="relative h-full w-full snap-start overflow-hidden bg-black">
+      <video
+        ref={videoRef}
+        src="https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" // Placeholder ad video
+        loop
+        playsInline
+        muted
+        className="h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+      <div className="absolute top-4 left-4 text-xs text-white bg-black/50 px-2 py-1 rounded-full">Advertisement</div>
+      {isIntersecting && showSkip && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <Button onClick={handleSkipClick} variant="secondary">Skip Ad</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type FeedItem = Video | { id: string, type: 'ad' };
+
 export function ShortsPlayer() {
-  const [shorts, setShorts] = useState<Video[]>([]);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleShortId, setVisibleShortId] = useState<string | null>(null);
@@ -246,7 +300,7 @@ export function ShortsPlayer() {
         const shortsSnapshot = await getDocs(shortsQuery);
 
         if (shortsSnapshot.empty) {
-            setShorts([]);
+            setFeed([]);
             setLoading(false);
             return;
         }
@@ -275,11 +329,18 @@ export function ShortsPlayer() {
             }
         }
         
-        setShorts(fetchedShorts);
+        const feedWithAds: FeedItem[] = [];
+        fetchedShorts.forEach((short, index) => {
+            feedWithAds.push(short);
+            if ((index + 1) % 5 === 0 && index < fetchedShorts.length - 1) {
+                feedWithAds.push({ id: `ad-${index}`, type: 'ad' });
+            }
+        });
+        setFeed(feedWithAds);
 
       } catch (error) {
         console.error("Error fetching shorts:", error);
-        setShorts([]);
+        setFeed([]);
       } finally {
         setLoading(false);
       }
@@ -287,11 +348,23 @@ export function ShortsPlayer() {
     fetchShorts();
   }, []);
 
+  const handleSkipAd = (adIndex: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const nextItemIndex = adIndex + 1;
+    const nextItem = feed[nextItemIndex];
+    if (nextItem) {
+      const nextElement = container.querySelector(`[data-short-id="${nextItem.id}"]`);
+      nextElement?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   useEffect(() => {
-    if (loading || shorts.length === 0) return;
+    if (loading || feed.length === 0) return;
     
-    if (!visibleShortId && shorts.length > 0) {
-        setVisibleShortId(shorts[0].id);
+    if (!visibleShortId && feed.length > 0) {
+        setVisibleShortId(feed[0].id);
     }
 
     const observer = new IntersectionObserver(
@@ -300,7 +373,7 @@ export function ShortsPlayer() {
           if (entry.isIntersecting) {
             const shortId = entry.target.getAttribute("data-short-id");
             setVisibleShortId(shortId);
-            if(shortId) {
+            if(shortId && !shortId.startsWith('ad-')) {
                 const newUrl = `${window.location.pathname}#${shortId}`;
                 window.history.replaceState(null, '', newUrl);
             }
@@ -323,13 +396,13 @@ export function ShortsPlayer() {
     return () => {
       shortsElements?.forEach((el) => observer.unobserve(el));
     };
-  }, [shorts, loading, visibleShortId]);
+  }, [feed, loading, visibleShortId]);
 
     if(loading) {
         return <div className="h-full w-full flex items-center justify-center text-white bg-black"><Loader2 className="w-8 h-8 animate-spin text-primary"/></div>
     }
 
-    if(shorts.length === 0) {
+    if(feed.length === 0) {
         return <div className="h-full w-full flex items-center justify-center text-white bg-black">No shorts available.</div>
     }
 
@@ -338,16 +411,20 @@ export function ShortsPlayer() {
       ref={containerRef}
       className="h-full w-full snap-y snap-mandatory overflow-y-scroll no-scrollbar"
     >
-      {shorts.map((short) => (
-        <div key={short.id} data-short-id={short.id} className="h-full w-full snap-start">
-            <ShortCard 
-              short={short} 
-              isIntersecting={visibleShortId === short.id}
-              isMuted={isMuted}
-              setIsMuted={setIsMuted}
-              hasInteracted={hasInteracted}
-              setHasInteracted={setHasInteracted}
-            />
+      {feed.map((item, index) => (
+        <div key={item.id} data-short-id={item.id} className="h-full w-full snap-start">
+            {item.type === 'ad' ? (
+                <AdCard onSkip={() => handleSkipAd(index)} isIntersecting={visibleShortId === item.id} />
+            ) : (
+                <ShortCard 
+                short={item as Video} 
+                isIntersecting={visibleShortId === item.id}
+                isMuted={isMuted}
+                setIsMuted={setIsMuted}
+                hasInteracted={hasInteracted}
+                setHasInteracted={setHasInteracted}
+                />
+            )}
         </div>
       ))}
     </div>
