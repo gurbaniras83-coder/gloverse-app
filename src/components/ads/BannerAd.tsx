@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { adConfig } from '@/lib/adConfig';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,17 @@ declare global {
 }
 
 export function BannerAd({ className }: { className?: string }) {
+    const insRef = useRef<HTMLModElement>(null);
+
     useEffect(() => {
+        const adElement = insRef.current;
+
+        // If the ad element is not there, or if it has already been initialized, do nothing.
+        // AdSense adds the "data-adsbygoogle-status" attribute once it processes the ad slot.
+        if (!adElement || adElement.hasAttribute('data-adsbygoogle-status')) {
+            return;
+        }
+
         try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (err) {
@@ -37,6 +47,8 @@ export function BannerAd({ className }: { className?: string }) {
              <span className="text-xs font-semibold self-start mb-1" style={{ color: '#FFD700' }}>Sponsored</span>
              <div className="w-full flex items-center justify-center bg-secondary rounded-lg min-h-[100px]">
                 <ins
+                    ref={insRef}
+                    key={`ads-banner-${adSlotId}`}
                     className="adsbygoogle"
                     style={{ display: 'inline-block', width: '320px', height: '100px' }}
                     data-ad-client={adConfig.adsensePublisherId}
