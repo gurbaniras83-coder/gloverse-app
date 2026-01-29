@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { adConfig } from '@/lib/adConfig';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 declare global {
     interface Window {
@@ -11,26 +12,21 @@ declare global {
 }
 
 export function BannerAd({ className }: { className?: string }) {
-    const insRef = useRef<HTMLModElement>(null);
+    const pathname = usePathname();
+    const adSlotId = adConfig.homeBannerAdUnit.split('/')[1];
 
     useEffect(() => {
-        const adElement = insRef.current;
-
-        // If the ad element is not there, or if it has already been initialized, do nothing.
-        // AdSense adds the "data-adsbygoogle-status" attribute once it processes the ad slot.
-        if (!adElement || adElement.hasAttribute('data-adsbygoogle-status')) {
-            return;
-        }
-
+        // This effect re-runs on route changes (because of the `pathname` dependency),
+        // signaling AdSense to look for new or replaced ad slots on the page.
         try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (err) {
+            // This error is common in development environments and can often be ignored.
+            // It indicates that the ad container was re-rendered before an ad could be fetched.
             console.error("AdSense execution error: ", err);
         }
-    }, []);
+    }, [pathname]);
 
-    const adSlotId = adConfig.homeBannerAdUnit.split('/')[1];
-    
     if (!adSlotId) {
         return (
              <div className={cn("flex flex-col items-center justify-center w-full min-h-[124px] bg-secondary rounded-lg p-2", className)}>
@@ -47,8 +43,9 @@ export function BannerAd({ className }: { className?: string }) {
              <span className="text-xs font-semibold self-start mb-1" style={{ color: '#FFD700' }}>Sponsored</span>
              <div className="w-full flex items-center justify-center bg-secondary rounded-lg min-h-[100px]">
                 <ins
-                    ref={insRef}
-                    key={`ads-banner-${adSlotId}`}
+                    // By using the pathname in the key, we force React to re-create this DOM element on navigation.
+                    // This is crucial for AdSense to recognize it as a new ad slot in a single-page app.
+                    key={pathname}
                     className="adsbygoogle"
                     style={{ display: 'inline-block', width: '320px', height: '100px' }}
                     data-ad-client={adConfig.adsensePublisherId}
