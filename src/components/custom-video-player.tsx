@@ -1,9 +1,19 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, FastForward, Rewind } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { cn } from '@/lib/utils';
+import { adConfig } from '@/lib/adConfig';
+import { Button } from './ui/button';
+
+// Define google.ima types locally to avoid installing @types/google.ima
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 interface CustomVideoPlayerProps {
   src: string;
@@ -14,8 +24,19 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
   ({ src, autoPlay = false }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
+  const adContainerRef = useRef<HTMLDivElement>(null); // For IMA SDK
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // IMA SDK Refs
+  const imaRefs = useRef<{
+    adDisplayContainer: any | null,
+    adsLoader: any | null,
+    adsManager: any | null,
+  }>({ adDisplayContainer: null, adsLoader: null, adsManager: null });
+  const midrollCuePoints = useRef<number[]>([]);
+  const playedMidrolls = useRef<Set<number>>(new Set());
+
+  // Player State
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [isMuted, setIsMuted] = useState(autoPlay); // Mute autoplay by default
   const [volume, setVolume] = useState(1);
@@ -25,35 +46,228 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
   const [showControls, setShowControls] = useState(true);
   const [showSkipFeedback, setShowSkipFeedback] = useState<'forward' | 'backward' | null>(null);
 
+  // Ad State
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [isAdSkippable, setIsAdSkippable] = useState(false);
+  const [adCountdown, setAdCountdown] = useState('');
+  const [prerollPlayed, setPrerollPlayed] = useState(false);
+
   const lastClickTimeRef = useRef(0);
 
   useImperativeHandle(ref, () => ({
     video: videoRef.current
   }));
 
+  const playContent = useCallback(() => {
+    if (videoRef.current) {
+        videoRef.current.play().catch(e => console.error("Content play failed", e));
+    }
+  }, []);
+  
+  const buildAdTagUrl = (adUnit: string) => {
+    // This is a sample ad tag URL structure. You may need to adjust it based on your Ad Manager setup.
+    const baseUrl = 'https://pubads.g.doubleclick.net/gampad/ads';
+    const params = new URLSearchParams({
+        sz: '640x480',
+        iu: adUnit,
+        impl: 's',
+        gdfp_req: '1',
+        env: 'vp',
+        output: 'vast',
+        unviewed_position_start: '1',
+        cust_params: encodeURIComponent('deployment=gloverse&sample_ct=linear'),
+        correlator: Date.now().toString(),
+    });
+    return `${baseUrl}?${params.toString()}`;
+  }
+
+  const onAdError = useCallback((adErrorEvent: any) => {
+      console.error('Ad Error: ' + adErrorEvent.getError().toString());
+      imaRefs.current.adsManager?.destroy();
+      setIsAdPlaying(false);
+      playContent();
+  }, [playContent]);
+
+  const onContentPauseRequested = useCallback(() => {
+      setIsAdPlaying(true);
+      videoRef.current?.pause();
+  }, []);
+
+  const onContentResumeRequested = useCallback(() => {
+      setIsAdPlaying(false);
+      if (!prerollPlayed) setPrerollPlayed(true);
+      playContent();
+  }, [playContent, prerollPlayed]);
+
+  const onAdSkippableChanged = useCallback(() => {
+      const ad = imaRefs.current.adsManager?.getCurrentAd();
+      if (ad?.isSkippable()) {
+          setIsAdSkippable(true);
+      }
+  }, []);
+  
+  const onAdProgress = useCallback((adProgressData: any) => {
+      const adData = adProgressData.getAdData();
+      const remaining = Math.ceil(adData.remainingTime);
+      
+      if (adData.skippable && adData.skippableTimeOffset > 0) {
+          const skipTime = Math.ceil(adData.skippableTimeOffset - adData.currentTime);
+          if (skipTime > 0) {
+              setAdCountdown(`Skip in ${skipTime}`);
+          } else {
+              setAdCountdown(`Ad: ${remaining}s`);
+          }
+      } else if (remaining > 0) {
+          setAdCountdown(`Ad: ${remaining}s`);
+      }
+  }, []);
+
+  const onAdComplete = useCallback(() => {
+      setIsAdSkippable(false);
+      setAdCountdown('');
+  }, []);
+
+  const onAdsManagerLoaded = useCallback((adsManagerLoadedEvent: any) => {
+      const adsRenderingSettings = new window.google.ima.AdsRenderingSettings();
+      adsRenderingSettings.restoreCustomPlaybackStateOnAdBreakComplete = true;
+      
+      imaRefs.current.adsManager = adsManagerLoadedEvent.getAdsManager(videoRef.current, adsRenderingSettings);
+      
+      imaRefs.current.adsManager.addEventListener(window.google.ima.AdErrorEvent.Type.AD_ERROR, onAdError);
+      imaRefs.current.adsManager.addEventListener(window.google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED, onContentPauseRequested);
+      imaRefs.current.adsManager.addEventListener(window.google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED, onContentResumeRequested);
+      imaRefs.current.adsManager.addEventListener(window.google.ima.AdEvent.Type.SKIPPABLE_STATE_CHANGED, onAdSkippableChanged);
+      imaRefs.current.adsManager.addEventListener(window.google.ima.AdEvent.Type.AD_PROGRESS, onAdProgress);
+      imaRefs.current.adsManager.addEventListener(window.google.ima.AdEvent.Type.COMPLETE, onAdComplete);
+
+      try {
+          const viewMode = isFullscreen ? window.google.ima.ViewMode.FULLSCREEN : window.google.ima.ViewMode.NORMAL;
+          imaRefs.current.adsManager.init(videoRef.current?.clientWidth, videoRef.current?.clientHeight, viewMode);
+          imaRefs.current.adsManager.start();
+      } catch (adError) {
+           console.error("AdsManager could not be started", adError);
+           playContent();
+      }
+  }, [isFullscreen, onAdComplete, onAdError, onAdProgress, onAdSkippableChanged, onContentPauseRequested, onContentResumeRequested, playContent]);
+
+  const setupIMA = useCallback(() => {
+      if (!videoRef.current || !adContainerRef.current || !window.google?.ima) return;
+      
+      if (imaRefs.current.adDisplayContainer) return; // Already setup
+
+      imaRefs.current.adDisplayContainer = new window.google.ima.AdDisplayContainer(adContainerRef.current, videoRef.current);
+      imaRefs.current.adsLoader = new window.google.ima.AdsLoader(imaRefs.current.adDisplayContainer);
+      
+      imaRefs.current.adsLoader.addEventListener(
+          window.google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
+          onAdsManagerLoaded,
+          false
+      );
+      imaRefs.current.adsLoader.addEventListener(
+          window.google.ima.AdErrorEvent.Type.AD_ERROR,
+          onAdError,
+          false
+      );
+      
+      const contentEnded = () => { imaRefs.current.adsLoader?.contentComplete(); };
+      videoRef.current.addEventListener('ended', contentEnded);
+
+      return () => {
+          videoRef.current?.removeEventListener('ended', contentEnded);
+      }
+  }, [onAdsManagerLoaded, onAdError]);
+  
+  useEffect(() => {
+    // Only run setup once video element is available
+    if (videoRef.current) {
+        setupIMA();
+    }
+  }, [setupIMA]);
+  
+  const requestAds = useCallback((adTagUrl: string) => {
+      if (!imaRefs.current.adsLoader || !videoRef.current) {
+          console.warn("Ads loader/video not ready.");
+          playContent();
+          return;
+      }
+      const adsRequest = new window.google.ima.AdsRequest();
+      adsRequest.adTagUrl = adTagUrl;
+      adsRequest.linearAdSlotWidth = videoRef.current.clientWidth;
+      adsRequest.linearAdSlotHeight = videoRef.current.clientHeight;
+      adsRequest.nonLinearAdSlotWidth = videoRef.current.clientWidth;
+      adsRequest.nonLinearAdSlotHeight = videoRef.current.clientHeight;
+      imaRefs.current.adsLoader.requestAds(adsRequest);
+  }, [playContent]);
+
   // --- Core Playback Logic ---
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isAdPlaying) return;
+
+    if (!prerollPlayed && video.paused) {
+        imaRefs.current.adDisplayContainer?.initialize();
+        requestAds(buildAdTagUrl(adConfig.preRollAdUnit));
+        setPrerollPlayed(true);
+        return;
+    }
+
     if (video.paused) {
       video.play().catch(console.error);
     } else {
       video.pause();
     }
-  }, []);
+  }, [isAdPlaying, prerollPlayed, requestAds]);
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
-    if (video) {
+    if (video && !isAdPlaying) {
       setProgress(video.currentTime);
+      
+      const currentTime = Math.floor(video.currentTime);
+      for (const cuePoint of midrollCuePoints.current) {
+          if (currentTime >= cuePoint && !playedMidrolls.current.has(cuePoint)) {
+              console.log(`Requesting mid-roll at ${cuePoint}s`);
+              requestAds(buildAdTagUrl(adConfig.midRollAdUnit));
+              playedMidrolls.current.add(cuePoint);
+              break; 
+          }
+      }
     }
   };
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
     if (video) {
-      setDuration(video.duration);
+      const videoDuration = video.duration;
+      setDuration(videoDuration);
+
+      if (videoDuration > 3600) { // > 60 minutes
+          const fiveMinutes = 300;
+          const cuePoints: number[] = [];
+          for (let i = fiveMinutes; i < videoDuration; i += fiveMinutes) {
+              cuePoints.push(i);
+          }
+          midrollCuePoints.current = cuePoints;
+      }
     }
+  };
+
+  useEffect(() => {
+    if (autoPlay && videoRef.current && !prerollPlayed) {
+        const video = videoRef.current;
+        const handleCanPlay = () => {
+             imaRefs.current.adDisplayContainer?.initialize();
+             requestAds(buildAdTagUrl(adConfig.preRollAdUnit));
+             setPrerollPlayed(true);
+             video.removeEventListener('canplay', handleCanPlay);
+        }
+        video.addEventListener('canplay', handleCanPlay);
+        return () => video.removeEventListener('canplay', handleCanPlay);
+    }
+  }, [autoPlay, prerollPlayed, requestAds]);
+
+  const skipAd = () => {
+      imaRefs.current.adsManager?.skip();
   };
 
   // --- Volume & Mute ---
@@ -92,16 +306,26 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
   const toggleFullscreen = () => {
     const player = playerRef.current;
     if (!player) return;
+    
     if (!document.fullscreenElement) {
-      player.requestFullscreen().catch(console.error);
+      player.requestFullscreen().catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
     } else {
-      document.exitFullscreen().catch(console.error);
+      document.exitFullscreen().catch(err => console.error(`Error attempting to exit full-screen mode: ${err.message} (${err.name})`));
     }
   };
   
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+       if (imaRefs.current.adsManager) {
+            const video = videoRef.current;
+            if (isFs) {
+                imaRefs.current.adsManager.resize(window.screen.width, window.screen.height, window.google.ima.ViewMode.FULLSCREEN);
+            } else if (video) {
+                imaRefs.current.adsManager.resize(video.clientWidth, video.clientHeight, window.google.ima.ViewMode.NORMAL);
+            }
+       }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
@@ -109,13 +333,14 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
 
   // --- Double Tap to Skip ---
   const handleSkip = useCallback((direction: 'forward' | 'backward') => {
+    if (isAdPlaying) return;
     const video = videoRef.current;
     if (!video) return;
     const skipAmount = 10;
     video.currentTime += (direction === 'forward' ? skipAmount : -skipAmount);
     setShowSkipFeedback(direction);
     setTimeout(() => setShowSkipFeedback(null), 500);
-  }, []);
+  }, [isAdPlaying]);
 
   const handlePlayerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const now = new Date().getTime();
@@ -193,10 +418,29 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
         muted={isMuted}
       />
       
+      <div ref={adContainerRef} className="absolute inset-0 pointer-events-none" />
+
+       {/* Ad UI Overlay */}
+       {isAdPlaying && (
+          <div className="absolute inset-0 flex flex-col justify-end p-4 bg-transparent pointer-events-none">
+              <div className="flex justify-between items-end w-full">
+                  <div className="text-white bg-black/50 px-2 py-1 rounded text-sm">{adCountdown}</div>
+                  {isAdSkippable && (
+                      <Button
+                          onClick={skipAd}
+                          className="bg-black/50 text-white hover:bg-black/75 pointer-events-auto"
+                      >
+                          Skip Ad
+                      </Button>
+                  )}
+              </div>
+          </div>
+      )}
+      
       {/* Click overlay for play/pause/skip */}
       <div 
         className="absolute inset-0"
-        onClick={handlePlayerClick}
+        onClick={!isAdPlaying ? handlePlayerClick : undefined}
       />
       
       {/* Skip feedback */}
@@ -206,59 +450,63 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
       </div>
 
       {/* Controls Overlay */}
-      <div className={cn(
-        "absolute inset-0 flex flex-col justify-between p-4 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity pointer-events-none",
-        showControls ? 'opacity-100' : 'opacity-0'
-      )}>
-        {/* Top controls (empty for now) */}
-        <div></div>
+      {!isAdPlaying && (
+          <div className={cn(
+            "absolute inset-0 flex flex-col justify-between p-4 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity pointer-events-none",
+            showControls ? 'opacity-100' : 'opacity-0'
+          )}>
+            {/* Top controls (empty for now) */}
+            <div></div>
 
-        {/* Middle Play/Pause button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          {!isPlaying && <div className="bg-black/50 rounded-full p-4"><Play className="w-16 h-16 text-white" fill="white"/></div>}
-        </div>
+            {/* Middle Play/Pause button */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {!isPlaying && <div className="bg-black/50 rounded-full p-4"><Play className="w-16 h-16 text-white" fill="white"/></div>}
+            </div>
 
-        {/* Bottom controls */}
-        <div className="flex flex-col gap-2 pointer-events-auto">
-          <div className="flex items-center gap-2 text-white text-xs">
-            <span>{formatTime(progress)}</span>
-            <Slider
-              min={0}
-              max={duration}
-              step={1}
-              value={[progress]}
-              onValueChange={handleSeek}
-              className="w-full"
-            />
-            <span>{formatTime(duration)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={togglePlayPause}>
-                {isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white" />}
-              </button>
-              <div className="flex items-center gap-2 group/volume">
-                  <button onClick={toggleMute}>
-                      {isMuted || volume === 0 ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
+            {/* Bottom controls */}
+            <div className="flex flex-col gap-2 pointer-events-auto">
+              <div className="flex items-center gap-2 text-white text-xs">
+                <span>{formatTime(progress)}</span>
+                <Slider
+                  min={0}
+                  max={duration}
+                  step={1}
+                  value={[progress]}
+                  onValueChange={handleSeek}
+                  className="w-full"
+                />
+                <span>{formatTime(duration)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button onClick={togglePlayPause}>
+                    {isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white" />}
                   </button>
-                  <div className="w-24 opacity-0 group-hover/volume:opacity-100 transition-opacity">
-                      <Slider
-                        min={0}
-                        max={1}
-                        step={0.1}
-                        value={[volume]}
-                        onValueChange={handleVolumeChange}
-                      />
+                  <div className="flex items-center gap-2 group/volume">
+                      <button onClick={toggleMute}>
+                          {isMuted || volume === 0 ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
+                      </button>
+                      <div className="w-24 opacity-0 group-hover/volume:opacity-100 transition-opacity">
+                          <Slider
+                            min={0}
+                            max={1}
+                            step={0.1}
+                            value={[volume]}
+                            onValueChange={handleVolumeChange}
+                          />
+                      </div>
                   </div>
+                </div>
+                <button onClick={toggleFullscreen}>
+                  {isFullscreen ? <Minimize className="w-6 h-6 text-white" /> : <Maximize className="w-6 h-6 text-white" />}
+                </button>
               </div>
             </div>
-            <button onClick={toggleFullscreen}>
-              {isFullscreen ? <Minimize className="w-6 h-6 text-white" /> : <Maximize className="w-6 h-6 text-white" />}
-            </button>
           </div>
-        </div>
-      </div>
+        )}
     </div>
   );
 });
 CustomVideoPlayer.displayName = "CustomVideoPlayer";
+
+    
