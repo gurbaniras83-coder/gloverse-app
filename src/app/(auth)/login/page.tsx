@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, getAdditionalUserInfo } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -55,8 +56,27 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const email = `${values.handle.replace("@", "")}@gloverse.com`;
+      // 1. Find user by handle in Firestore
+      const lowerCaseHandle = values.handle.replace("@", "").toLowerCase();
+      const q = query(collection(db, "channels"), where("handle", "==", lowerCaseHandle));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("Invalid credentials");
+      }
+
+      // 2. Get the email from the channel document
+      const channelData = querySnapshot.docs[0].data();
+      const email = channelData.email;
+
+      if (!email) {
+        // This would be an inconsistent data state, but good to handle
+        throw new Error("No email found for this handle");
+      }
+      
+      // 3. Sign in with the retrieved email and provided password
       await signInWithEmailAndPassword(auth, email, values.password);
+
       toast({
         title: "Login Successful",
         description: "Welcome back!",
