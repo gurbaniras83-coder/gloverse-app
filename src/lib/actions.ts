@@ -1,3 +1,4 @@
+
 "use server";
 
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -28,7 +29,7 @@ export async function getDeviceAccountCount(deviceId: string) {
     }
 }
 
-export async function registerUser({ handle, password, fullName, bio, deviceId }: { handle: string; password: string; fullName: string; bio: string; deviceId: string; }) {
+export async function registerUser({ handle, password, fullName, bio, email, phoneNumber, deviceId }: { handle: string; password: string; fullName: string; bio: string; email: string; phoneNumber: string; deviceId: string; }) {
   const lowerCaseHandle = handle.toLowerCase();
   
   try {
@@ -49,9 +50,6 @@ export async function registerUser({ handle, password, fullName, bio, deviceId }
     }
 
     // Step 3: Create user in Firebase Auth
-    // NOTE: This uses the client SDK and should ideally be refactored to use the Admin SDK.
-    // For this context, we assume it's being called in an environment where client auth is available.
-    const email = `${lowerCaseHandle}@gloverse.com`;
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
@@ -60,11 +58,15 @@ export async function registerUser({ handle, password, fullName, bio, deviceId }
       handle: lowerCaseHandle,
       fullName: fullName,
       bio: bio,
+      email: email,
+      phoneNumber: phoneNumber,
       photoURL: `https://avatar.vercel.sh/${lowerCaseHandle}.png`,
       subscribers: 0,
       user_id: user.uid,
       createdAt: new Date().toISOString(),
       deviceId: deviceId,
+      isMonetized: false,
+      walletBalance: 0,
     });
 
     return { success: true, userId: user.uid };

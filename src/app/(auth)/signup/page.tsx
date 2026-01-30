@@ -8,8 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { debounce } from "lodash";
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
-import { signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
-import { auth, GoogleAuthProvider } from "@/lib/firebase";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +34,7 @@ import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { checkHandleUniqueness, registerUser, getDeviceAccountCount, createChannelForGoogleUser } from "@/lib/actions";
+import { checkHandleUniqueness, registerUser } from "@/lib/actions";
 
 const signupSchema = z.object({
   handle: z.string()
@@ -46,6 +45,8 @@ const signupSchema = z.object({
   confirmPassword: z.string(),
   fullName: z.string().min(2, "Full name is required.").max(50),
   bio: z.string().max(160, "Bio must be less than 160 characters.").optional(),
+  email: z.string().email("Please enter a valid email address."),
+  phoneNumber: z.string().min(10, "Please enter a valid phone number."),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -59,7 +60,6 @@ export default function SignupPage() {
   const [isPending, startTransition] = useTransition();
   const [handleStatus, setHandleStatus] = useState<"checking" | "unique" | "taken" | "idle">("idle");
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   useEffect(() => {
     const getDeviceId = async () => {
@@ -78,6 +78,8 @@ export default function SignupPage() {
       confirmPassword: "",
       fullName: "",
       bio: "",
+      email: "",
+      phoneNumber: "",
     },
     mode: "onChange",
   });
@@ -116,10 +118,16 @@ export default function SignupPage() {
     let fieldsToValidate: (keyof z.infer<typeof signupSchema>)[] = [];
     if (step === 1) fieldsToValidate = ["handle"];
     if (step === 2) fieldsToValidate = ["password", "confirmPassword"];
+    if (step === 3) fieldsToValidate = ["fullName", "bio"];
 
     const isValid = await form.trigger(fieldsToValidate);
-    if (isValid && (step !== 1 || handleStatus === 'unique')) {
-      setStep(s => s + 1);
+    
+    if (step === 1) {
+        if (isValid && handleStatus === 'unique') {
+            setStep(s => s + 1);
+        }
+    } else if (isValid) {
+        setStep(s => s + 1);
     }
   };
 
@@ -148,173 +156,172 @@ export default function SignupPage() {
     });
   }
 
-  const handleGoogleSignUp = async () => {
-    if (!deviceId) {
-        toast({ variant: 'destructive', title: 'Device not identified', description: 'Please wait a moment and try again.'});
-        return;
-    }
-    setIsGoogleLoading(true);
+  const progress = Math.round((step / 4) * 100);
 
-    try {
-        const { count } = await getDeviceAccountCount(deviceId);
-        if (count >= 3) {
-            toast({ variant: "destructive", title: "Account limit reached", description: "You can only create up to 3 accounts per device on GloVerse." });
-            setIsGoogleLoading(false);
-            return;
-        }
-
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const additionalInfo = getAdditionalUserInfo(result);
-
-        if (additionalInfo?.isNewUser) {
-            await createChannelForGoogleUser({ user: user.toJSON(), deviceId });
-        }
-        
-        toast({ title: "Account Created!", description: "Welcome to Gloverse!" });
-        router.push("/");
-
-    } catch (error: any) {
-        console.error("Google Sign-Up Error", error);
-        if (error.code !== 'auth/popup-closed-by-user') {
-            toast({ variant: "destructive", title: "Google Sign-Up Failed", description: error.message });
-        }
-    } finally {
-        setIsGoogleLoading(false);
-    }
-  }
-
-  const progress = Math.round((step / 3) * 100);
+  const variants = {
+    hidden: { opacity: 0, x: 50 },
+    visible: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -50 },
+  };
 
   return (
     <div className="flex flex-col items-center space-y-6">
       <Logo />
-      <Card className="w-full">
+      <Card className="w-full overflow-hidden">
         <CardHeader>
           <Progress value={progress} className="w-full h-2 mb-4" />
           <CardTitle className="text-2xl font-headline">Create your account</CardTitle>
           <CardDescription>
-            {step === 1 && "Choose your unique handle."}
+            {step === 1 && "Choose your unique @handle."}
             {step === 2 && "Create a secure password."}
-            {step === 3 && "Tell us a bit about yourself."}
+            {step === 3 && "Tell us a bit about your channel."}
+            {step === 4 && "How can we reach you?"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {step === 1 && (
-                <div className="space-y-4">
-                    <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isGoogleLoading || !deviceId}>
-                        {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 21.2 177 62.2L353 144.1c-24.3-23.8-59.3-37.8-97-37.8-70.1 0-129.2 57-129.2 128.1s59.1 128.1 129.2 128.1c80.3 0 112-59.3 115.1-90.1H248v-65.1h239.9c1.4 12.8 2.1 26.6 2.1 40.8z"></path></svg>}
-                        Sign up with Google
-                    </Button>
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">Or</span>
-                        </div>
-                    </div>
-                     <FormField
-                      control={form.control}
-                      name="handle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Handle</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input 
-                                placeholder="your_handle" 
-                                {...field} 
-                                onChange={handleHandleChange}
-                                autoCapitalize="none"
-                                autoComplete="off"
-                                autoCorrect="off"
-                              />
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                                {handleStatus === 'checking' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                                {handleStatus === 'unique' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                                {handleStatus === 'taken' && <XCircle className="h-4 w-4 text-destructive" />}
-                              </div>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                           {handleStatus === 'taken' && <p className="text-sm font-medium text-destructive">This handle is already taken.</p>}
-                        </FormItem>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={step}
+                        variants={variants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        transition={{ duration: 0.3 }}
+                        className="space-y-6"
+                    >
+                      {step === 1 && (
+                         <FormField
+                          control={form.control}
+                          name="handle"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Handle</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    placeholder="your_handle" 
+                                    {...field} 
+                                    onChange={handleHandleChange}
+                                    autoCapitalize="none"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                  />
+                                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    {handleStatus === 'checking' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                    {handleStatus === 'unique' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                                    {handleStatus === 'taken' && <XCircle className="h-4 w-4 text-destructive" />}
+                                  </div>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                               {handleStatus === 'taken' && <p className="text-sm font-medium text-destructive">This handle is already taken.</p>}
+                            </FormItem>
+                          )}
+                        />
                       )}
-                    />
-                </div>
-              )}
-              
-              {step === 2 && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-              {step === 3 && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="bio"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bio</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Tell us about yourself..." className="resize-none" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-              <div className="flex gap-4">
+                      
+                      {step === 2 && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl>
+                                  <Input type="password" placeholder="••••••••" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="confirmPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Confirm Password</FormLabel>
+                                <FormControl>
+                                  <Input type="password" placeholder="••••••••" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                      {step === 3 && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="fullName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Full Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="John Doe" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="bio"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Channel Description (Bio)</FormLabel>
+                                <FormControl>
+                                  <Textarea placeholder="Tell us about yourself..." className="resize-none" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                       {step === 4 && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Email Address</FormLabel>
+                                <FormControl>
+                                  <Input type="email" placeholder="you@example.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="phoneNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Phone Number</FormLabel>
+                                <FormControl>
+                                  <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                    </motion.div>
+                </AnimatePresence>
+              <div className="flex gap-4 pt-4">
                 {step > 1 && <Button type="button" variant="outline" onClick={prevStep} className="w-full">Back</Button>}
-                {step < 3 && <Button type="button" onClick={nextStep} className="w-full" disabled={handleStatus !== 'unique'}>Next</Button>}
-                {step === 3 && (
-                  <Button type="submit" className="w-full" disabled={isPending || !deviceId}>
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Create Account
+                
+                {step < 4 && <Button type="button" onClick={nextStep} className="w-full" disabled={(step === 1 && handleStatus !== 'unique') || isPending}>Next</Button>}
+                
+                {step === 4 && (
+                  <Button type="submit" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold" disabled={isPending || !deviceId}>
+                    {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'UNLEASH YOUR INNER STAR'}
                   </Button>
                 )}
               </div>
@@ -333,5 +340,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-    
