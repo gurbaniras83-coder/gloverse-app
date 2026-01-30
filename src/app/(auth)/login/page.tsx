@@ -131,7 +131,12 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+               <div className="flex justify-end -mt-4">
+                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                  Forgot Password?
+                </Link>
+              </div>
+              <Button type="submit" className="w-full !mt-6" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Log In
               </Button>
