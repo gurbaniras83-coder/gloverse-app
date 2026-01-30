@@ -45,6 +45,7 @@
     "firebase": "^11.9.1",
     "framer-motion": "^11.2.10",
     "genkit": "^1.20.0",
+    "input-otp": "^1.2.5",
     "lodash": "^4.17.21",
     "lucide-react": "^0.475.0",
     "next": "15.5.9",
