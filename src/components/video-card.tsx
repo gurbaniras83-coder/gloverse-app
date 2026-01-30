@@ -9,13 +9,16 @@ import { Video } from "@/lib/types";
 import { formatViews } from "@/lib/utils";
 import React from "react";
 import { Skeleton } from "./ui/skeleton";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Share2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type VideoCardProps = {
   video: Video;
 };
 
 export function VideoCard({ video }: VideoCardProps) {
+  const { toast } = useToast();
+
   if (!video || !video.channel) {
     return (
       <div className="space-y-3">
@@ -44,6 +47,35 @@ export function VideoCard({ video }: VideoCardProps) {
     // In a real app, this would open a menu
     alert("Menu clicked for " + video.title);
   };
+
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const shareUrl = `https://gloverse-app.vercel.app/watch?v=${video.id}`;
+    const shareData = {
+        title: video.title,
+        text: video.description || `Watch "${video.title}" on GloVerse!`,
+        url: shareUrl,
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (error) {
+            if ((error as DOMException).name !== 'AbortError') {
+              console.error("Error sharing:", error);
+            }
+        }
+    } else {
+        navigator.clipboard.writeText(shareUrl);
+        toast({
+            title: "Link Copied!",
+            description: "The video link has been copied to your clipboard.",
+        });
+    }
+  };
+
 
   return (
     <div className="flex flex-col space-y-3 group">
@@ -104,13 +136,22 @@ export function VideoCard({ video }: VideoCardProps) {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleMenuClick}
-          className="p-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-          aria-label="More options"
-        >
-          <MoreVertical className="w-5 h-5 text-muted-foreground" />
-        </button>
+        <div className="flex items-center flex-shrink-0">
+          <button
+            onClick={handleShareClick}
+            className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Share video"
+          >
+            <Share2 className="w-5 h-5 text-muted-foreground" />
+          </button>
+          <button
+            onClick={handleMenuClick}
+            className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="More options"
+          >
+            <MoreVertical className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
       </div>
     </div>
   );

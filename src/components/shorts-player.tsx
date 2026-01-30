@@ -156,6 +156,35 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
     }
   }
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!short) return;
+    
+    const shareUrl = `https://gloverse-app.vercel.app/watch?v=${short.id}`;
+    const shareData = {
+        title: short.title,
+        text: short.description,
+        url: shareUrl,
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (error) {
+            if ((error as DOMException).name !== 'AbortError') {
+                console.error("Error sharing:", error);
+            }
+        }
+    } else {
+        navigator.clipboard.writeText(shareUrl);
+        toast({
+            title: "Link Copied!",
+            description: "The video link has been copied to your clipboard.",
+        });
+    }
+  };
+
+
   if (!short.channel) return null;
 
   return (
@@ -216,7 +245,7 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
             </div>
           </SheetContent>
         </Sheet>
-        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={e => e.stopPropagation()}>
+        <Button variant="ghost" className="h-auto flex-col gap-1 p-0 text-white hover:bg-transparent hover:text-white" onClick={handleShare}>
           <Send className="h-8 w-8" />
           <span className="text-xs">Share</span>
         </Button>
