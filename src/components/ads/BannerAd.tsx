@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { adConfig } from '@/lib/adConfig';
 import { cn } from '@/lib/utils';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -12,26 +12,33 @@ declare global {
     }
 }
 
-export function BannerAd({ className }: { className?: string }) {
+// Using a non-memoized component internally to handle hooks
+const BannerAdComponent = ({ className }: { className?: string }) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const adRef = useRef<HTMLModElement>(null);
+
+    // A unique key based on the full URL is crucial. It forces React to
+    // unmount the old <ins> tag and mount a new one on navigation.
+    const urlKey = `${pathname}?${searchParams.toString()}`;
     const adSlotId = adConfig.homeBannerAdUnit.split('/')[1];
 
-    // Create a key that changes with the full URL, including search parameters.
-    // This is crucial for SPA navigation where the pathname might not change, but the content does.
-    const urlKey = `${pathname}?${searchParams.toString()}`;
-
     useEffect(() => {
-        // This effect re-runs on route changes (because of the `urlKey` dependency),
-        // signaling AdSense to look for new or replaced ad slots on the page.
-        try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (err) {
-            // This error is common in development environments and can often be ignored.
-            // It indicates that the ad container was re-rendered before an ad could be fetched.
-            console.error("AdSense execution error: ", err);
+        const insElement = adRef.current;
+
+        // Check if the ad slot has already been processed by AdSense.
+        // AdSense adds `data-adsbygoogle-status="loaded"` to the `ins` tag once it's filled.
+        // We only want to push a new ad request if the slot is fresh.
+        if (insElement && insElement.getAttribute('data-adsbygoogle-status') !== 'loaded') {
+            try {
+                (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (err) {
+                // This error is common in dev environments where the AdSense script
+                // might not load, or if an ad is blocked.
+                console.error("AdSense push error: ", err);
+            }
         }
-    }, [urlKey]); // Depend on the full URL key
+    }, [urlKey]); // The effect re-runs whenever the URL changes.
 
     if (!adSlotId) {
         return (
@@ -49,9 +56,8 @@ export function BannerAd({ className }: { className?: string }) {
              <span className="text-xs font-semibold self-start mb-1" style={{ color: '#FFD700' }}>Sponsored</span>
              <div className="w-full flex items-center justify-center bg-secondary rounded-lg min-h-[100px]">
                 <ins
-                    // By using a key that includes search params, we force React to re-create this DOM element
-                    // even when only the query string changes (e.g., navigating from one video to another).
-                    key={urlKey}
+                    ref={adRef}
+                    key={urlKey} // This key is essential to force a re-mount on navigation
                     className="adsbygoogle"
                     style={{ display: 'inline-block', width: '320px', height: '100px' }}
                     data-ad-client={adConfig.adsensePublisherId}
@@ -60,4 +66,8 @@ export function BannerAd({ className }: { className?: string }) {
              </div>
         </div>
     );
-}
+};
+
+// Wrap the component with React.memo as requested to prevent unnecessary re-renders
+// from parent components if its own props (like className) haven't changed.
+export const BannerAd = React.memo(BannerAdComponent);
