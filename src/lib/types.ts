@@ -15,6 +15,10 @@ export type Channel = {
   videoCount?: number;
   createdAt?: string; // ISO String
   deviceId?: string;
+  email?: string;
+  phoneNumber?: string;
+  isMonetized?: boolean;
+  walletBalance?: number;
 };
 
 export type Video = {
@@ -44,3 +48,5 @@ export type Comment = {
   text: string;
   timestamp: Date;
 }
+
+    

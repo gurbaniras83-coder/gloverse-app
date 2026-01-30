@@ -12,7 +12,8 @@ import {
   updatePassword,
   type ConfirmationResult
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +28,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -41,11 +41,12 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { Channel } from "@/lib/types";
 
 
 // Zod schema for different steps
 const formSchema = z.object({
-  phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, "Please enter a valid phone number with country code (e.g., +15551234567)."),
+  handle: z.string().min(3, "Handle must be at least 3 characters."),
   otp: z.string().min(6, "Your one-time password must be 6 characters."),
   newPassword: z.string().min(6, "Password must be at least 6 characters."),
   confirmPassword: z.string(),
@@ -59,14 +60,15 @@ const formSchema = z.object({
   path: ["confirmPassword"],
 });
 
-type Step = 'enterPhone' | 'enterOtp' | 'resetPassword' | 'success';
+type Step = 'enterHandle' | 'enterOtp' | 'resetPassword' | 'success' | 'legacyUserError';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<Step>('enterPhone');
+  const [step, setStep] = useState<Step>('enterHandle');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [activePhoneNumber, setActivePhoneNumber] = useState<string | null>(null);
   
   const [countdown, setCountdown] = useState(0);
   const countdownIntervalRef = useRef<NodeJS.Timeout>();
@@ -76,7 +78,7 @@ export default function ForgotPasswordPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      phoneNumber: "",
+      handle: "",
       otp: "",
       newPassword: "",
       confirmPassword: ""
@@ -87,13 +89,9 @@ export default function ForgotPasswordPage() {
   // Initialize RecaptchaVerifier
   useEffect(() => {
     if (!recaptchaVerifierRef.current) {
-        // The 'recaptcha-container' must be visible for this to work.
-        // We render it invisibly.
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
             'size': 'invisible',
-            'callback': () => {
-              // reCAPTCHA solved, allow signInWithPhoneNumber.
-            }
+            'callback': () => {}
         });
     }
   }, []);
@@ -114,15 +112,16 @@ export default function ForgotPasswordPage() {
     setCountdown(60);
   };
 
-  const handleSendOtp = async (values: { phoneNumber: string }) => {
+  const handleSendOtp = async (phoneNumber: string) => {
     setIsLoading(true);
     try {
       const verifier = recaptchaVerifierRef.current;
       if (!verifier) {
           throw new Error("Recaptcha verifier not initialized.");
       }
-      const result = await signInWithPhoneNumber(auth, values.phoneNumber, verifier);
+      const result = await signInWithPhoneNumber(auth, phoneNumber, verifier);
       setConfirmationResult(result);
+      setActivePhoneNumber(phoneNumber);
       setStep('enterOtp');
       startCountdown();
       toast({ title: "OTP Sent", description: "Please check your phone for the verification code." });
@@ -138,12 +137,40 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  const handleCheckHandle = async (values: { handle: string }) => {
+    setIsLoading(true);
+    const lowerCaseHandle = values.handle.replace("@", "").toLowerCase();
+    try {
+      const q = query(collection(db, "channels"), where("handle", "==", lowerCaseHandle));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        toast({ variant: "destructive", title: "User Not Found", description: "No channel found with this handle." });
+        setIsLoading(false);
+        return;
+      }
+
+      const channelData = querySnapshot.docs[0].data() as Channel;
+
+      if (channelData.phoneNumber) {
+        await handleSendOtp(channelData.phoneNumber);
+      } else {
+        setStep('legacyUserError');
+      }
+
+    } catch (error) {
+       console.error("Handle check error:", error);
+       toast({ variant: "destructive", title: "Error", description: "Could not perform lookup." });
+    } finally {
+       setIsLoading(false);
+    }
+  };
+
   const handleVerifyOtp = async (values: { otp: string }) => {
     if (!confirmationResult) return;
     setIsLoading(true);
     try {
       await confirmationResult.confirm(values.otp);
-      // After confirmation, auth.currentUser is populated for this session.
       setStep('resetPassword');
       toast({ title: "OTP Verified", description: "You can now reset your password." });
     } catch (error: any) {
@@ -163,7 +190,7 @@ export default function ForgotPasswordPage() {
     const user = auth.currentUser;
     if (!user) {
         toast({ variant: "destructive", title: "Authentication Error", description: "Your session has expired. Please start over." });
-        setStep('enterPhone');
+        setStep('enterHandle');
         setIsLoading(false);
         return;
     }
@@ -185,15 +212,15 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     let fieldsToValidate: (keyof z.infer<typeof formSchema>)[] = [];
-    if (step === 'enterPhone') fieldsToValidate = ["phoneNumber"];
+    if (step === 'enterHandle') fieldsToValidate = ["handle"];
     if (step === 'enterOtp') fieldsToValidate = ["otp"];
     if (step === 'resetPassword') fieldsToValidate = ["newPassword", "confirmPassword"];
 
     const isValid = await form.trigger(fieldsToValidate);
     if (!isValid) return;
 
-    if (step === 'enterPhone' && values.phoneNumber) {
-      handleSendOtp({ phoneNumber: values.phoneNumber });
+    if (step === 'enterHandle' && values.handle) {
+      handleCheckHandle({ handle: values.handle });
     } else if (step === 'enterOtp' && values.otp) {
       handleVerifyOtp({ otp: values.otp });
     } else if (step === 'resetPassword' && values.newPassword) {
@@ -213,23 +240,24 @@ export default function ForgotPasswordPage() {
             <CardHeader>
               <CardTitle className="text-2xl font-headline">Reset Password</CardTitle>
               <CardDescription>
-                {step === 'enterPhone' && "Enter your phone number to receive a verification code."}
-                {step === 'enterOtp' && `We sent a code to ${form.getValues('phoneNumber')}.`}
+                {step === 'enterHandle' && "Enter your handle to begin password recovery."}
+                {step === 'enterOtp' && `We sent a code to the phone number ending in ••••${activePhoneNumber?.slice(-4)}.`}
                 {step === 'resetPassword' && "Create a new, strong password."}
                 {step === 'success' && "Your password has been reset."}
+                {step === 'legacyUserError' && "This is a legacy account without recovery information."}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {step === 'enterPhone' && (
+              {step === 'enterHandle' && (
                 <FormField
                   control={form.control}
-                  name="phoneNumber"
+                  name="handle"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
+                      <FormLabel>Handle</FormLabel>
                       <FormControl>
-                        <Input type="tel" placeholder="+15551234567" {...field} />
+                        <Input type="text" placeholder="@yourhandle" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -261,7 +289,7 @@ export default function ForgotPasswordPage() {
                         </FormItem>
                       )}
                     />
-                     <Button type="button" variant="link" size="sm" onClick={() => handleSendOtp({ phoneNumber: form.getValues('phoneNumber')!})} disabled={countdown > 0 || isLoading}>
+                     <Button type="button" variant="link" size="sm" onClick={() => handleSendOtp(activePhoneNumber!)} disabled={countdown > 0 || isLoading}>
                         {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
                     </Button>
                   </div>
@@ -301,10 +329,18 @@ export default function ForgotPasswordPage() {
                  </div>
               )}
 
-               {step !== 'success' && (
+              {step === 'legacyUserError' && (
+                 <div className="text-center p-4 rounded-md bg-destructive/20 border border-destructive">
+                    <p className="font-semibold text-destructive">Recovery Info Missing</p>
+                    <p className="text-sm text-destructive/90">Please contact support or use Founder Override.</p>
+                 </div>
+              )}
+
+
+               {step !== 'success' && step !== 'legacyUserError' && (
                  <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {step === 'enterPhone' && "Send OTP"}
+                    {step === 'enterHandle' && "Continue"}
                     {step === 'enterOtp' && "Verify Code"}
                     {step === 'resetPassword' && "Set New Password"}
                  </Button>
@@ -324,3 +360,5 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
+
+    
