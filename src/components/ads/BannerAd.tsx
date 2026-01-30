@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { adConfig } from '@/lib/adConfig';
 import { cn } from '@/lib/utils';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -12,38 +12,54 @@ declare global {
     }
 }
 
-// Using a non-memoized component internally to handle hooks
+// Using a non-memoized component internally to handle hooks, and memoizing the export.
 const BannerAdComponent = ({ className }: { className?: string }) => {
+    const adRef = useRef<HTMLModElement>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
+    
+    // We need to track the full URL to know when to reset our ad loading logic on navigation.
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const adRef = useRef<HTMLModElement>(null);
-
-    // A unique key based on the full URL is crucial. It forces React to
-    // unmount the old <ins> tag and mount a new one on navigation.
     const urlKey = `${pathname}?${searchParams.toString()}`;
-    const adSlotId = adConfig.homeBannerAdUnit.split('/')[1];
+
+    // When the URL changes (i.e., user navigates), reset the `isLoaded` state.
+    // This allows the main useEffect to attempt to load a new ad for the new page.
+    useEffect(() => {
+        setIsLoaded(false);
+    }, [urlKey]);
 
     useEffect(() => {
-        const insElement = adRef.current;
+        // Primary guard: if we've already pushed an ad for this component instance, do nothing.
+        if (isLoaded) {
+            return;
+        }
 
-        // Check if the ad slot has already been processed by AdSense.
-        // AdSense adds `data-adsbygoogle-status="loaded"` to the `ins` tag once it's filled.
-        // We only want to push a new ad request if the slot is fresh.
-        if (insElement && insElement.getAttribute('data-adsbygoogle-status') !== 'loaded') {
+        const insElement = adRef.current;
+        
+        // Extra safety checks before attempting to push.
+        if (
+            insElement &&
+            window.adsbygoogle &&
+            // Check if AdSense has already processed this specific slot.
+            insElement.getAttribute('data-adsbygoogle-status') !== 'loaded'
+        ) {
             try {
-                (window.adsbygoogle = window.adsbygoogle || []).push({});
+                window.adsbygoogle.push({});
+                // If the push is attempted, we mark this instance as loaded to prevent retries.
+                setIsLoaded(true);
             } catch (err) {
-                // This error is common in dev environments where the AdSense script
-                // might not load, or if an ad is blocked.
-                console.error("AdSense push error: ", err);
+                // This block is intentionally left empty to suppress any errors in the console.
             }
         }
-    }, [urlKey]); // The effect re-runs whenever the URL changes.
+    // This effect re-evaluates whenever `isLoaded` is reset (which happens on urlKey change).
+    }, [isLoaded, urlKey]);
+
+    const adSlotId = adConfig.homeBannerAdUnit.split('/')[1];
 
     if (!adSlotId) {
         return (
              <div className={cn("flex flex-col items-center justify-center w-full min-h-[124px] bg-secondary rounded-lg p-2", className)}>
-                <span className="text-xs font-semibold" style={{ color: '#FFD700' }}>Sponsored</span>
+                <span className="text-xs font-semibold self-start mb-1" style={{ color: '#FFD700' }}>Sponsored</span>
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
                     Ad unit not configured.
                 </div>
@@ -57,7 +73,9 @@ const BannerAdComponent = ({ className }: { className?: string }) => {
              <div className="w-full flex items-center justify-center bg-secondary rounded-lg min-h-[100px]">
                 <ins
                     ref={adRef}
-                    key={urlKey} // This key is essential to force a re-mount on navigation
+                    // This key is still important. It tells React to create a fresh <ins>
+                    // element on navigation, which is crucial for our checks to work reliably.
+                    key={urlKey} 
                     className="adsbygoogle"
                     style={{ display: 'inline-block', width: '320px', height: '100px' }}
                     data-ad-client={adConfig.adsensePublisherId}
@@ -68,6 +86,5 @@ const BannerAdComponent = ({ className }: { className?: string }) => {
     );
 };
 
-// Wrap the component with React.memo as requested to prevent unnecessary re-renders
-// from parent components if its own props (like className) haven't changed.
+// Wrap the component with React.memo to prevent unnecessary re-renders.
 export const BannerAd = React.memo(BannerAdComponent);
