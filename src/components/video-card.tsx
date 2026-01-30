@@ -7,10 +7,11 @@ import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Video } from "@/lib/types";
 import { formatViews } from "@/lib/utils";
-import React from "react";
+import React, { useState } from "react";
 import { Skeleton } from "./ui/skeleton";
 import { MoreVertical, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ShareSheet } from "./share-sheet";
 
 type VideoCardProps = {
   video: Video;
@@ -18,6 +19,7 @@ type VideoCardProps = {
 
 export function VideoCard({ video }: VideoCardProps) {
   const { toast } = useToast();
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   if (!video || !video.channel) {
     return (
@@ -68,11 +70,7 @@ export function VideoCard({ video }: VideoCardProps) {
             }
         }
     } else {
-        navigator.clipboard.writeText(shareUrl);
-        toast({
-            title: "Link Copied!",
-            description: "The video link has been copied to your clipboard.",
-        });
+        setShareSheetOpen(true);
     }
   };
 
@@ -153,6 +151,11 @@ export function VideoCard({ video }: VideoCardProps) {
           </button>
         </div>
       </div>
+      <ShareSheet 
+        video={video}
+        open={shareSheetOpen}
+        onOpenChange={setShareSheetOpen}
+      />
     </div>
   );
 }

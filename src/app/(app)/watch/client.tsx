@@ -19,6 +19,7 @@ import { useAuth } from "@/context/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
 import { BannerAd } from "@/components/ads/BannerAd";
+import { ShareSheet } from "@/components/share-sheet";
 
 interface WatchPageClientProps {
   initialVideo: Video;
@@ -45,6 +46,7 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
   const [isLiked, setIsLiked] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [likeCount, setLikeCount] = useState(initialVideo.likes || 0);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   // History tracking logic
   useEffect(() => {
@@ -207,11 +209,7 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
             }
         }
     } else {
-        navigator.clipboard.writeText(shareUrl);
-        toast({
-            title: "Link Copied!",
-            description: "The video link has been copied to your clipboard.",
-        });
+        setShareSheetOpen(true);
     }
   };
 
@@ -324,6 +322,11 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
           ))}
         </div>
       </div>
+       <ShareSheet 
+        video={video}
+        open={shareSheetOpen}
+        onOpenChange={setShareSheetOpen}
+      />
     </div>
   );
 }

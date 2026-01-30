@@ -16,6 +16,7 @@ import { formatViews } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CommentSection } from "@/components/comment-section";
+import { ShareSheet } from "./share-sheet";
 
 interface ShortCardProps {
   short: Video;
@@ -36,6 +37,7 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
   const [likeCount, setLikeCount] = useState(short.likes || 0);
   const [commentCount, setCommentCount] = useState(0);
   const [isInteracting, setIsInteracting] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!short.id) return;
@@ -176,11 +178,8 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
             }
         }
     } else {
-        navigator.clipboard.writeText(shareUrl);
-        toast({
-            title: "Link Copied!",
-            description: "The video link has been copied to your clipboard.",
-        });
+        videoRef.current?.pause();
+        setShareSheetOpen(true);
     }
   };
 
@@ -250,6 +249,16 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
           <span className="text-xs">Share</span>
         </Button>
       </div>
+       <ShareSheet
+        video={short}
+        open={shareSheetOpen}
+        onOpenChange={(open) => {
+          setShareSheetOpen(open);
+          if (!open && isIntersecting) {
+            videoRef.current?.play().catch(console.error);
+          }
+        }}
+      />
     </div>
   );
 }
