@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -46,7 +47,7 @@ const signupSchema = z.object({
   fullName: z.string().min(2, "Full name is required.").max(50),
   bio: z.string().max(160, "Bio must be less than 160 characters.").optional(),
   email: z.string().email("Please enter a valid email address."),
-  phoneNumber: z.string().min(10, "Please enter a valid phone number."),
+  phoneNumber: z.string().regex(/^[0-9]{10,15}$/, "Please enter a valid phone number (10-15 digits)."),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -304,8 +305,11 @@ export default function SignupPage() {
                               <FormItem>
                                 <FormLabel>Phone Number</FormLabel>
                                 <FormControl>
-                                  <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                                  <Input type="tel" placeholder="e.g. 15551234567" {...field} />
                                 </FormControl>
+                                <FormDescription>
+                                  Numbers only, including country code if applicable.
+                                </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
