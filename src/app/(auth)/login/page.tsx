@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -42,6 +41,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [resetStatus, setResetStatus] = useState<string>("");
+  const [isResetting, setIsResetting] = useState<boolean>(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -91,6 +92,25 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   }
+
+  const handleMasterReset = async () => {
+    setIsResetting(true);
+    setResetStatus("Processing...");
+    try {
+        const response = await fetch('/api/master-reset', { method: 'POST' });
+        const data = await response.json();
+        if (response.ok) {
+            setResetStatus(data.message);
+        } else {
+            throw new Error(data.message || 'Failed to trigger reset.');
+        }
+    } catch (error: any) {
+        setResetStatus(`Error: ${error.message}`);
+    } finally {
+        setIsResetting(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col items-center space-y-8">
@@ -150,6 +170,14 @@ export default function LoginPage() {
               Sign up
             </Link>
           </p>
+           {/* Temporary hidden master reset button */}
+           <div className="pt-8 opacity-50">
+                <Button variant="destructive" size="sm" onClick={handleMasterReset} disabled={isResetting}>
+                    {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Founder Override
+                </Button>
+                {resetStatus && <p className="text-xs text-center mt-2 text-muted-foreground">{resetStatus}</p>}
+           </div>
         </CardFooter>
       </Card>
     </div>
