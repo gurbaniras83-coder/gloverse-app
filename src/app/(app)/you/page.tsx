@@ -7,7 +7,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, LogOut, Settings, BarChart2, ChevronRight, History, FolderClock, ThumbsUp } from "lucide-react";
+import { Loader2, LogOut, Settings, BarChart2, ChevronRight, History, FolderClock, ThumbsUp, Info, Shield, FileText } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { VideoCard } from "@/components/video-card";
@@ -205,6 +205,34 @@ export default function YouPage() {
                 Settings
             </Link>
         </Button>
+      </div>
+
+       <Separator />
+
+      <div className="space-y-2">
+        <Button variant="ghost" className="w-full justify-start gap-3" asChild>
+            <Link href="/about">
+                <Info className="h-5 w-5 text-muted-foreground" />
+                About GloVerse
+            </Link>
+        </Button>
+        <Button variant="ghost" className="w-full justify-start gap-3" asChild>
+            <Link href="/privacy">
+                <Shield className="h-5 w-5 text-muted-foreground" />
+                Privacy Policy
+            </Link>
+        </Button>
+        <Button variant="ghost" className="w-full justify-start gap-3" asChild>
+            <Link href="/terms">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                Terms of Service
+            </Link>
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
         <Button variant="ghost" className="w-full justify-start gap-3 text-destructive hover:text-destructive" onClick={handleLogout}>
           <LogOut className="h-5 w-5" />
           Log Out
