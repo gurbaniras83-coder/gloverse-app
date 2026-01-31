@@ -34,7 +34,7 @@ export default function HomePage() {
       setLoading(true);
       try {
         const videosRef = collection(db, "videos");
-        const q = query(videosRef, where("visibility", "==", "public"), orderBy("createdAt", "desc"), limit(10));
+        const q = query(videosRef, where("visibility", "==", "public"), orderBy("createdAt", "desc"), limit(20)); // Fetch more for the hybrid layout
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
@@ -85,6 +85,9 @@ export default function HomePage() {
 
   const longVideos = filteredVideos.filter(v => v.type === 'long');
   const shorts = filteredVideos.filter(v => v.type === 'short');
+  
+  const topLongVideos = longVideos.slice(0, 4);
+  const remainingLongVideos = longVideos.slice(4);
 
   if (loading) {
       return (
@@ -124,18 +127,29 @@ export default function HomePage() {
       <CategoryShelf selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
       <div className="flex flex-col">
         
-        {longVideos.length > 0 && (
+        {topLongVideos.length > 0 && (
             <div className="flex flex-col space-y-6 p-4">
-            {longVideos.map((video, index) => (
+            {topLongVideos.map((video, index) => (
                 <React.Fragment key={video.id}>
                 <VideoCard video={video} />
-                {(index < longVideos.length - 1) && <Separator className="my-2" />}
+                {(index < topLongVideos.length - 1) && <Separator className="my-2" />}
                 </React.Fragment>
             ))}
             </div>
         )}
 
         {shorts.length > 0 && <ShortsShelf shorts={shorts} />}
+        
+        {remainingLongVideos.length > 0 && (
+            <div className="flex flex-col space-y-6 p-4">
+                {remainingLongVideos.map((video, index) => (
+                <React.Fragment key={video.id}>
+                    <VideoCard video={video} />
+                    {(index < remainingLongVideos.length - 1) && <Separator className="my-2" />}
+                </React.Fragment>
+            ))}
+            </div>
+        )}
 
         {!loading && videos.length > 0 && filteredVideos.length === 0 && (
              <p className="text-center text-muted-foreground py-16">No videos found in the "{selectedCategory}" category.</p>
