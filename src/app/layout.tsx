@@ -62,6 +62,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <UploadProgressIndicator />
             </UploadProvider>
         </AuthProvider>
+        {/* Adsterra Social Bar */}
+        <Script
+          id="adsterra-social-bar"
+          strategy="lazyOnload"
+          dangerouslySetInnerHTML={{ __html: `(function(d,z,s){s=d.createElement('script');s.src='https://exp.btnlos.com/in-page/pub.js';s.setAttribute('data-zone', '7561819');s.setAttribute('data-ext', '1');d.body.appendChild(s);})(document);` }}
+        />
       </body>
     </html>
   );

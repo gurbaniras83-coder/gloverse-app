@@ -19,10 +19,11 @@ declare global {
 interface CustomVideoPlayerProps {
   src: string;
   autoPlay?: boolean;
+  onAdLoadFailed?: () => void;
 }
 
 export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, CustomVideoPlayerProps>(
-  ({ src, autoPlay = false }, ref) => {
+  ({ src, autoPlay = false, onAdLoadFailed }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const adContainerRef = useRef<HTMLDivElement>(null); // For IMA SDK
@@ -96,7 +97,10 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
       }
       setIsAdPlaying(false);
       playContent();
-  }, [playContent, toast]);
+      if (onAdLoadFailed) {
+        onAdLoadFailed();
+      }
+  }, [playContent, toast, onAdLoadFailed]);
 
   const onContentPauseRequested = useCallback(() => {
       setIsAdPlaying(true);

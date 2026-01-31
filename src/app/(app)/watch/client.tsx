@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CustomVideoPlayer } from "@/components/custom-video-player";
 import { BannerAd } from "@/components/ads/BannerAd";
 import { ShareSheet } from "@/components/share-sheet";
+import { MonetagInterstitialAd } from "@/components/ads/MonetagInterstitialAd";
 
 interface WatchPageClientProps {
   initialVideo: Video;
@@ -47,6 +48,7 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
   const [isInteracting, setIsInteracting] = useState(false);
   const [likeCount, setLikeCount] = useState(initialVideo.likes || 0);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [showMonetagAd, setShowMonetagAd] = useState(false);
 
   // History tracking logic
   useEffect(() => {
@@ -227,7 +229,7 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
   return (
     <div className="flex flex-col">
       <div className="sticky top-0 z-10 w-full bg-black">
-        <CustomVideoPlayer ref={videoPlayerRef} src={video.videoUrl} autoPlay />
+        <CustomVideoPlayer ref={videoPlayerRef} src={video.videoUrl} autoPlay onAdLoadFailed={() => setShowMonetagAd(true)} />
       </div>
 
       <div className="p-4 space-y-4">
@@ -327,6 +329,7 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
         open={shareSheetOpen}
         onOpenChange={setShareSheetOpen}
       />
+      {showMonetagAd && <MonetagInterstitialAd />}
     </div>
   );
 }
