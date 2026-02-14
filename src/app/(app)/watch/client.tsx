@@ -21,6 +21,7 @@ import { CustomVideoPlayer } from "@/components/custom-video-player";
 import { BannerAd } from "@/components/ads/BannerAd";
 import { ShareSheet } from "@/components/share-sheet";
 import { MonetagInterstitialAd } from "@/components/ads/MonetagInterstitialAd";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
 
 interface WatchPageClientProps {
   initialVideo: Video;
@@ -246,7 +247,10 @@ export default function WatchPageClient({ initialVideo, initialSuggestedVideos }
                 <AvatarFallback>{video.channel.handle.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-semibold">{video.channel.fullName}</p>
+                <div className="flex items-center gap-1.5">
+                    <p className="font-semibold">{video.channel.fullName}</p>
+                    {video.channel.isVerified && <VerifiedBadge />}
+                </div>
                 <p className="text-sm text-muted-foreground" suppressHydrationWarning>{formatViews(video.channel.subscribers)} subscribers</p>
               </div>
             </Link>

@@ -19,6 +19,7 @@ import { ShortsShelf } from '@/components/shorts-shelf';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
 
 interface ChannelPageContentProps {
     initialChannel: any | null;
@@ -160,7 +161,10 @@ export default function ChannelPageContent({ initialChannel, initialVideos }: Ch
                     <AvatarFallback className="text-3xl">{channel.handle[0].toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <h1 className="text-3xl font-bold font-headline">{channel.fullName}</h1>
+                    <div className="flex items-center justify-center gap-2">
+                        <h1 className="text-3xl font-bold font-headline">{channel.fullName}</h1>
+                        {channel.isVerified && <VerifiedBadge className="w-6 h-6" />}
+                    </div>
                     <div className="flex items-center justify-center gap-2 text-muted-foreground" suppressHydrationWarning>
                         <span>@{channel.handle}</span>
                         <span>&middot;</span>

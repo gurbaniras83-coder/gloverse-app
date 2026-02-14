@@ -12,6 +12,7 @@ import { Skeleton } from "./ui/skeleton";
 import { MoreVertical, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ShareSheet } from "./share-sheet";
+import { VerifiedBadge } from "./ui/verified-badge";
 
 type VideoCardProps = {
   video: Video;
@@ -124,11 +125,14 @@ export function VideoCard({ video }: VideoCardProps) {
               </p>
           </Link>
           <div className="mt-1 text-sm text-muted-foreground">
-            <Link href={`/@${video.channel.handle}`} className="block">
-              <p className="truncate hover:text-primary">
-                {video.channel.fullName}
-              </p>
-            </Link>
+            <div className="flex items-center gap-1.5">
+                <Link href={`/@${video.channel.handle}`} className="truncate">
+                    <p className="truncate hover:text-primary">
+                        {video.channel.fullName}
+                    </p>
+                </Link>
+                {video.channel.isVerified && <VerifiedBadge />}
+            </div>
             <p suppressHydrationWarning>
               {formatViews(video.views)} views &middot; {timeAgo}
             </p>

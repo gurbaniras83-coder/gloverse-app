@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { CommentSection } from "@/components/comment-section";
 import { ShareSheet } from "./share-sheet";
+import { VerifiedBadge } from "./ui/verified-badge";
 
 interface ShortCardProps {
   short: Video;
@@ -218,7 +219,10 @@ function ShortCard({ short, isIntersecting, isMuted, setIsMuted, hasInteracted, 
             <AvatarImage src={short.channel.photoURL} alt={short.channel.handle} />
             <AvatarFallback>{short.channel.handle[0]}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold group-hover:underline">@{short.channel.handle}</span>
+          <div className="flex items-center gap-1.5">
+             <span className="font-semibold group-hover:underline">@{short.channel.handle}</span>
+             {short.channel.isVerified && <VerifiedBadge />}
+          </div>
         </Link>
         <p className="mt-2 text-sm pointer-events-none">{short.title}</p>
       </div>

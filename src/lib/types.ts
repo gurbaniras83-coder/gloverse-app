@@ -18,6 +18,7 @@ export type Channel = {
   email?: string;
   phoneNumber?: string;
   isMonetized?: boolean;
+  isVerified?: boolean;
   walletBalance?: number;
 };
 

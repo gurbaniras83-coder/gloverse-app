@@ -66,6 +66,7 @@ export async function registerUser({ handle, password, fullName, bio, email, pho
       createdAt: new Date().toISOString(),
       deviceId: deviceId,
       isMonetized: false,
+      isVerified: false,
       walletBalance: 0,
     });
 
@@ -109,6 +110,9 @@ export async function createChannelForGoogleUser({ user, deviceId }: { user: any
             user_id: user.uid,
             createdAt: new Date().toISOString(),
             ...(deviceId && { deviceId: deviceId }), // Only add deviceId if it's provided
+            isVerified: false,
+            isMonetized: false,
+            walletBalance: 0,
         });
 
         return { success: true, userId: user.uid };
