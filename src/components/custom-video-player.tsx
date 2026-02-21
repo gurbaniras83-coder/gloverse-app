@@ -80,9 +80,10 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
     const handleSkipAd = useCallback(() => {
         if (videoRef.current) {
             setIsAdMode(false);
+            videoRef.current.pause();
             videoRef.current.src = contentUrl;
             videoRef.current.load();
-            videoRef.current.play().catch(e => console.error("Content play failed after skip", e));
+            videoRef.current.play().catch(e => console.log('Fast switch activated'));
         }
     }, [contentUrl]);
 
@@ -344,7 +345,7 @@ export const CustomVideoPlayer = forwardRef<{ video: HTMLVideoElement | null }, 
                     {showSkipAdButton && (
                         <Button
                             onClick={handleSkipAd}
-                            className="bg-black/50 text-white hover:bg-black/75 pointer-events-auto backdrop-blur-sm"
+                            className="bg-black/50 text-white hover:bg-black/75 pointer-events-auto backdrop-blur-sm z-50"
                         >
                             Skip Ad
                         </Button>
